@@ -7,12 +7,13 @@ import {
 } from 'lucide-react';
 import { AudioEffects, defaultEffects, loadAudioFile, processAudio, audioBufferToWav, downloadAudio } from '@/lib/audio-utils';
 import { 
-  trimAudio, reverseAudio, applyEQ, mergeAudio, 
+  trimAudio, deleteAudioSegment, reverseAudio, applyEQ, mergeAudio, 
   getWaveformData, applyFade,
   EQSettings, MergeSettings, FadeSettings 
 } from '@/lib/audio-advanced';
 import { allLoFiPresets, LoFiPreset } from '@/lib/lofi-presets';
 import LofiGeneratorTab from './generator/LofiGeneratorTab';
+import TrimTab from './editing/TrimTab';
 import Loader from './Loader';
 import styles from './AdvancedAudioEditor.module.css';
 import clsx from 'clsx';
@@ -23,6 +24,7 @@ export default function AdvancedAudioEditor() {
   const [activeTab, setActiveTab] = useState<TabType>('lofi');
   const [file, setFile] = useState<File | null>(null);
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
+  const [originalAudioUrl, setOriginalAudioUrl] = useState<string | null>(null);
   const [processedAudioUrl, setProcessedAudioUrl] = useState<string | null>(null);
   const [processedAudioTitle, setProcessedAudioTitle] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -31,11 +33,15 @@ export default function AdvancedAudioEditor() {
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const originalAudioRef = useRef<HTMLAudioElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Trim state
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(0);
+  const [trimAction, setTrimAction] = useState<'extract' | 'delete'>('extract');
+  const [trimFadeIn, setTrimFadeIn] = useState(false);
+  const [trimFadeOut, setTrimFadeOut] = useState(false);
 
   // EQ state
   const [eqSettings, setEqSettings] = useState<EQSettings>({ bass: 0, mid: 0, treble: 0 });
@@ -97,9 +103,19 @@ export default function AdvancedAudioEditor() {
     }
 
     try {
+      // Clean up previous audio URL
+      if (originalAudioUrl) {
+        URL.revokeObjectURL(originalAudioUrl);
+      }
+      
       const buffer = await loadAudioFile(selectedFile);
       setFile(selectedFile);
       setAudioBuffer(buffer);
+      
+      // Create URL for original audio playback
+      const url = URL.createObjectURL(selectedFile);
+      setOriginalAudioUrl(url);
+      
       setProcessedAudioUrl(null);
       setTrimStart(0);
       setTrimEnd(buffer.duration);
@@ -174,9 +190,21 @@ export default function AdvancedAudioEditor() {
         processed = await processAudio(processed, effects);
       }
 
-      // Apply trim
+      // Apply trim (extract or delete)
       if (activeTab === 'trim' && (trimStart > 0 || trimEnd < duration)) {
-        processed = await trimAudio(processed, trimStart, trimEnd);
+        if (trimAction === 'extract') {
+          processed = await trimAudio(processed, trimStart, trimEnd);
+        } else {
+          processed = await deleteAudioSegment(processed, trimStart, trimEnd);
+        }
+        
+        // Apply fade if requested
+        if (trimFadeIn || trimFadeOut) {
+          processed = await applyFade(processed, {
+            fadeIn: trimFadeIn ? 0.5 : 0,
+            fadeOut: trimFadeOut ? 0.5 : 0,
+          });
+        }
       }
 
       // Apply EQ
@@ -344,6 +372,21 @@ export default function AdvancedAudioEditor() {
 
       {audioBuffer && (
         <>
+          {/* Hidden audio element for original audio playback (used in trim tab) */}
+          {originalAudioUrl && (
+            <audio
+              ref={originalAudioRef}
+              src={originalAudioUrl}
+              onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+              onLoadedMetadata={(e) => {
+                if (!duration) {
+                  setDuration(e.currentTarget.duration);
+                }
+              }}
+              onEnded={() => setIsPlaying(false)}
+              style={{ display: 'none' }}
+            />
+          )}
           {/* Waveform Visualization */}
           <div className={clsx('glass-card', styles.waveformSection)}>
             <canvas 
@@ -449,40 +492,44 @@ export default function AdvancedAudioEditor() {
             )}
 
             {activeTab === 'trim' && (
-              <div className={styles.trimSection}>
-                <h3>Trim/Crop Audio</h3>
-                <div className={styles.trimControls}>
-                  <div className={styles.timeControl}>
-                    <label>Start Time (s)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max={duration}
-                      step="0.1"
-                      value={trimStart.toFixed(1)}
-                      onChange={(e) => setTrimStart(parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div className={styles.timeControl}>
-                    <label>End Time (s)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max={duration}
-                      step="0.1"
-                      value={trimEnd.toFixed(1)}
-                      onChange={(e) => setTrimEnd(parseFloat(e.target.value) || duration)}
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={handleProcess}
-                  disabled={isProcessing}
-                  className="btn btn-primary"
-                >
-                  {isProcessing ? 'Processing...' : 'Apply Trim'}
-                </button>
-              </div>
+              <TrimTab
+                trimStart={trimStart}
+                trimEnd={trimEnd}
+                duration={duration}
+                audioBuffer={audioBuffer}
+                onTrimStartChange={setTrimStart}
+                onTrimEndChange={setTrimEnd}
+                onProcess={handleProcess}
+                isProcessing={isProcessing}
+                isPlaying={isPlaying}
+                currentTime={currentTime}
+                onPlayPause={() => {
+                  const audio = originalAudioRef.current || audioRef.current;
+                  if (isPlaying) {
+                    audio?.pause();
+                  } else {
+                    audio?.play();
+                  }
+                  setIsPlaying(!isPlaying);
+                }}
+                onSeek={(time) => {
+                  const audio = originalAudioRef.current || audioRef.current;
+                  if (audio) {
+                    audio.currentTime = time;
+                    setCurrentTime(time);
+                  }
+                }}
+                onExport={() => {
+                  // Handle export (format can be used later for different export formats)
+                  handleProcess();
+                }}
+                action={trimAction}
+                fadeIn={trimFadeIn}
+                fadeOut={trimFadeOut}
+                onActionChange={setTrimAction}
+                onFadeInChange={setTrimFadeIn}
+                onFadeOutChange={setTrimFadeOut}
+              />
             )}
 
             {activeTab === 'eq' && (

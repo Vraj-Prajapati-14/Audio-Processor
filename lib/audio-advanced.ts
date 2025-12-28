@@ -27,7 +27,7 @@ export interface FadeSettings {
 }
 
 /**
- * Trim/crop audio to specified time range
+ * Trim/crop audio to specified time range (extract selected)
  */
 export async function trimAudio(
   audioBuffer: AudioBuffer,
@@ -49,6 +49,57 @@ export async function trimAudio(
   source.buffer = audioBuffer;
   source.start(0, startTime, endTime - startTime);
   source.connect(offlineContext.destination);
+
+  return await offlineContext.startRendering();
+}
+
+/**
+ * Delete selected segment from audio (keep everything except selected)
+ */
+export async function deleteAudioSegment(
+  audioBuffer: AudioBuffer,
+  startTime: number,
+  endTime: number
+): Promise<AudioBuffer> {
+  const sampleRate = audioBuffer.sampleRate;
+  const numberOfChannels = audioBuffer.numberOfChannels;
+  const totalLength = audioBuffer.length;
+  const startSample = Math.floor(startTime * sampleRate);
+  const endSample = Math.floor(endTime * sampleRate);
+  
+  // Calculate new length (total - deleted segment)
+  const deletedLength = endSample - startSample;
+  const newLength = totalLength - deletedLength;
+
+  const offlineContext = new OfflineAudioContext(
+    numberOfChannels,
+    newLength,
+    sampleRate
+  );
+
+  const newBuffer = offlineContext.createBuffer(numberOfChannels, newLength, sampleRate);
+
+  // Copy audio data before and after the deleted segment
+  for (let channel = 0; channel < numberOfChannels; channel++) {
+    const originalData = audioBuffer.getChannelData(channel);
+    const newData = newBuffer.getChannelData(channel);
+
+    // Copy part before deletion
+    for (let i = 0; i < startSample; i++) {
+      newData[i] = originalData[i];
+    }
+
+    // Copy part after deletion
+    for (let i = endSample; i < totalLength; i++) {
+      newData[i - deletedLength] = originalData[i];
+    }
+  }
+
+  // Render through OfflineAudioContext
+  const source = offlineContext.createBufferSource();
+  source.buffer = newBuffer;
+  source.connect(offlineContext.destination);
+  source.start(0);
 
   return await offlineContext.startRendering();
 }

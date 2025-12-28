@@ -1,0 +1,276 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.uploadSection {
+    text-align: center;
+}
+
+.uploadArea {
+    margin-bottom: 24px;
+}
+
+.uploadLabel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 60px 40px;
+    border: 2px dashed var(--glass-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.uploadLabel:hover {
+    border-color: var(--accent-primary);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.uploadLabel span:first-of-type {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.fileInfo {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.supportedFormats {
+    margin-top: 16px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.6;
+}
+
+.processBtn {
+    min-width: 200px;
+    padding: 14px 32px;
+    font-size: 1rem;
+}
+
+.effectsSection {
+    margin-top: 24px;
+}
+
+.sectionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.sectionHeader h2 {
+    margin: 0;
+    font-size: 1.75rem;
+}
+
+.effectsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.effectCard {
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.effectLabel {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.sliderGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sliderLabel {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.sliderValue {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+    min-width: 100px;
+}
+
+.playerSection {
+    margin-top: 24px;
+}
+
+.playerHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.playerHeader h3 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.playerControls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.playBtn {
+    min-width: 60px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.progressContainer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.timeDisplay {
+    display: flex;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    min-width: 60px;
+    flex-shrink: 0;
+}
+
+.progressBar {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.progressBar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.4);
+    transition: all 0.2s ease;
+    margin-top: -5px;
+}
+
+.progressBar::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.6);
+}
+
+.progressBar::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.4);
+    transition: all 0.2s ease;
+}
+
+.progressBar::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.6);
+}
+
+.progressBar::-webkit-slider-runnable-track {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+}
+
+.progressBar::-moz-range-track {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+    border: none;
+}
+
+.progressBar:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.progressBar:disabled::-webkit-slider-thumb {
+    cursor: not-allowed;
+}
+
+.progressBar:disabled::-moz-range-thumb {
+    cursor: not-allowed;
+}
+
+.downloadBtn {
+    margin-left: auto;
+}
+
+@media (max-width: 768px) {
+    .effectsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .playerControls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+    }
+
+    .progressContainer {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .timeDisplay {
+        min-width: auto;
+        font-size: 0.75rem;
+    }
+
+    .downloadBtn {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .uploadLabel {
+        padding: 40px 20px;
+    }
+}
+

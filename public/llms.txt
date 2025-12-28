@@ -1,0 +1,110 @@
+# AudioFX Pro - LLMs.txt
+
+## About
+AudioFX Pro is a free, browser-based audio processing tool that allows users to apply professional audio effects to their audio files. All processing happens client-side using Web Audio API, ensuring complete privacy and security.
+
+## Website
+https://www.audiofxpro.com
+
+## Key Features
+- Lofi audio effect with lowpass filtering
+- Reverb effect with adjustable room size and wet/dry mix
+- Delay/echo effect with configurable delay time and feedback
+- Distortion effect with adjustable amount
+- Pitch shifting (semitone adjustment)
+- Lowpass and highpass filters
+- Volume/gain control
+- Real-time audio processing
+- Client-side processing (privacy-focused)
+- Free to use, no registration required
+- Works on all modern browsers and devices
+
+## Technical Details
+- Built with Next.js 16 and React 19
+- Uses Web Audio API for audio processing
+- TypeScript for type safety
+- Responsive design for all devices
+- Zero server-side audio processing (all client-side)
+
+## Audio Effects Details
+
+### Lofi Effect
+- Applies lowpass filter to create vintage, warm sound
+- Configurable frequency cutoff (200-8000 Hz)
+- Perfect for creating nostalgic, lo-fi aesthetics
+
+### Reverb Effect
+- Simulated reverb using delay nodes
+- Adjustable room size (0-1)
+- Wet/dry mix control (0-1)
+- Dampening control for reverb tail
+
+### Delay Effect
+- Echo/delay effect with configurable timing
+- Delay time: 0-2 seconds
+- Feedback control: 0-1
+- Wet/dry mix: 0-1
+
+### Distortion
+- Wave shaping distortion
+- Amount control: 0-1
+- 4x oversampling for quality
+
+### Pitch Shifting
+- Semitone adjustment: -12 to +12
+- Uses playback rate adjustment
+- Maintains audio quality
+
+### Filters
+- Lowpass filter: 200-20000 Hz
+- Highpass filter: 20-5000 Hz
+- Biquad filter implementation
+
+## Supported Formats
+- MP3
+- MPEG
+- M4A
+- WAV
+- OGG
+- OGA
+- FLAC
+- AAC
+- WMA
+- OPUS
+- WEBM
+- 3GP
+- AMR
+- AIFF
+- AU
+- RA
+- Any format supported by the browser's AudioContext
+
+## Output Format
+- WAV format
+- 16-bit PCM
+- Original sample rate maintained
+- Stereo or mono based on input
+
+## Privacy & Security
+- All processing happens in the user's browser
+- No audio files are uploaded to any server
+- No data collection or tracking
+- No user registration required
+- Completely free and open
+
+## Use Cases
+- Music production
+- Podcast editing
+- Sound design
+- Audio experimentation
+- Learning audio effects
+- Content creation
+- Personal projects
+- Commercial projects (allowed)
+
+## Contact
+For questions or feedback, visit: https://www.audiofxpro.com/contact
+
+## License
+Free to use for personal and commercial projects.
+

@@ -3,24 +3,30 @@
 import { useState, useRef, useEffect } from 'react';
 import { 
   Upload, Download, Play, Pause, Music, Scissors, RotateCcw, 
-  Merge, Radio, Sliders, BarChart3, Volume2, RotateCw
+  Merge, Radio, Sliders, BarChart3, Volume2, RotateCw, Sparkles
 } from 'lucide-react';
 import { AudioEffects, defaultEffects, loadAudioFile, processAudio, audioBufferToWav, downloadAudio } from '@/lib/audio-utils';
 import { 
   trimAudio, reverseAudio, applyEQ, mergeAudio, 
-  getWaveformData, EQSettings, MergeSettings 
+  getWaveformData, applyFade,
+  EQSettings, MergeSettings, FadeSettings 
 } from '@/lib/audio-advanced';
+import { allLoFiPresets, LoFiPreset } from '@/lib/lofi-presets';
+import LofiGeneratorTab from './generator/LofiGeneratorTab';
+import Loader from './Loader';
 import styles from './AdvancedAudioEditor.module.css';
 import clsx from 'clsx';
 
-type TabType = 'effects' | 'trim' | 'eq' | 'merge' | 'tools';
+type TabType = 'lofi' | 'effects' | 'trim' | 'eq' | 'merge' | 'tools' | 'generator';
 
 export default function AdvancedAudioEditor() {
-  const [activeTab, setActiveTab] = useState<TabType>('effects');
+  const [activeTab, setActiveTab] = useState<TabType>('lofi');
   const [file, setFile] = useState<File | null>(null);
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
   const [processedAudioUrl, setProcessedAudioUrl] = useState<string | null>(null);
+  const [processedAudioTitle, setProcessedAudioTitle] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState('Processing...');
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -44,6 +50,7 @@ export default function AdvancedAudioEditor() {
 
   // Tools state
   const [isReversed, setIsReversed] = useState(false);
+  const [fadeSettings, setFadeSettings] = useState<FadeSettings>({ fadeIn: 0, fadeOut: 0 });
 
   // Effects state
   const [effects, setEffects] = useState<AudioEffects>(defaultEffects);
@@ -162,8 +169,8 @@ export default function AdvancedAudioEditor() {
     try {
       let processed = audioBuffer;
 
-      // Apply effects (lofi, reverb, delay, etc.)
-      if (activeTab === 'effects') {
+      // Apply Lo-Fi preset or custom effects
+      if (activeTab === 'lofi' || activeTab === 'effects') {
         processed = await processAudio(processed, effects);
       }
 
@@ -182,9 +189,36 @@ export default function AdvancedAudioEditor() {
         processed = await reverseAudio(processed);
       }
 
+      // Apply fade in/fade out
+      if (activeTab === 'tools' && (fadeSettings.fadeIn > 0 || fadeSettings.fadeOut > 0)) {
+        processed = await applyFade(processed, fadeSettings);
+      }
+
+      // Ensure we have a valid buffer
+      if (!processed) {
+        throw new Error('Audio processing failed: no buffer returned');
+      }
+
       const wavBlob = audioBufferToWav(processed);
       const url = URL.createObjectURL(wavBlob);
       setProcessedAudioUrl(url);
+      
+      // Create descriptive title based on active tab
+      let title = 'Processed Audio';
+      if (activeTab === 'lofi') {
+        title = 'Lo-Fi Processed Audio';
+      } else if (activeTab === 'effects') {
+        title = 'Audio with Effects Applied';
+      } else if (activeTab === 'trim') {
+        title = 'Trimmed Audio';
+      } else if (activeTab === 'eq') {
+        title = 'Equalized Audio';
+      } else if (activeTab === 'merge') {
+        title = 'Merged Audio';
+      } else if (activeTab === 'tools') {
+        title = 'Processed Audio (Tools Applied)';
+      }
+      setProcessedAudioTitle(title);
       
       // Update buffer for next operations
       const newBuffer = await loadAudioFile(new File([wavBlob], 'processed.wav', { type: 'audio/wav' }));
@@ -196,6 +230,7 @@ export default function AdvancedAudioEditor() {
       alert('Error processing audio');
     } finally {
       setIsProcessing(false);
+      setProcessingMessage('Processing...');
     }
   };
 
@@ -217,6 +252,7 @@ export default function AdvancedAudioEditor() {
     if (!audioBuffer || !mergeFile) return;
 
     setIsProcessing(true);
+    setProcessingMessage('Merging audio files...');
     try {
       const buffer2 = await loadAudioFile(mergeFile);
       const merged = await mergeAudio(audioBuffer, buffer2, mergeSettings);
@@ -224,6 +260,7 @@ export default function AdvancedAudioEditor() {
       const wavBlob = audioBufferToWav(merged);
       const url = URL.createObjectURL(wavBlob);
       setProcessedAudioUrl(url);
+      setProcessedAudioTitle('Merged Audio Files');
       
       setAudioBuffer(merged);
       setDuration(merged.duration);
@@ -234,6 +271,7 @@ export default function AdvancedAudioEditor() {
       alert('Error merging audio');
     } finally {
       setIsProcessing(false);
+      setProcessingMessage('Processing...');
     }
   };
 
@@ -267,6 +305,8 @@ export default function AdvancedAudioEditor() {
   };
 
   const tabs = [
+    { id: 'lofi' as TabType, label: 'Lo-Fi Presets', icon: Sparkles },
+    { id: 'generator' as TabType, label: 'Lo-Fi Generator', icon: Music },
     { id: 'effects' as TabType, label: 'Effects', icon: Sliders },
     { id: 'trim' as TabType, label: 'Trim/Crop', icon: Scissors },
     { id: 'eq' as TabType, label: 'EQ', icon: Radio },
@@ -275,7 +315,9 @@ export default function AdvancedAudioEditor() {
   ];
 
   return (
-    <div className={styles.container}>
+    <>
+      <Loader show={isProcessing} message={processingMessage} />
+      <div className={styles.container}>
       {/* File Upload */}
       <div className={clsx('glass-card', styles.uploadSection)}>
         <div className={styles.uploadArea}>
@@ -344,6 +386,68 @@ export default function AdvancedAudioEditor() {
 
           {/* Tab Content */}
           <div className={clsx('glass-card', styles.tabContent)}>
+            {activeTab === 'lofi' && (
+              <div className={styles.lofiSection}>
+                <h3>Lo-Fi Presets</h3>
+                <p className={styles.lofiDescription}>
+                  Click any preset to instantly apply that Lo-Fi vibe to your audio. Perfect for creating chill, nostalgic, or dreamy sounds.
+                </p>
+                <div className={styles.lofiPresetsGrid}>
+                  {allLoFiPresets.map((preset) => (
+                    <button
+                      key={preset.id}
+                      className={styles.lofiPresetCard}
+                      onClick={async () => {
+                        if (!audioBuffer) {
+                          alert('Please upload an audio file first');
+                          return;
+                        }
+                        setIsProcessing(true);
+                        setProcessingMessage(`Applying ${preset.name} preset...`);
+                        try {
+                          // Merge preset effects with defaultEffects to ensure all properties exist
+                          const mergedEffects: AudioEffects = {
+                            lofi: { ...defaultEffects.lofi, ...preset.effects.lofi },
+                            reverb: { ...defaultEffects.reverb, ...preset.effects.reverb },
+                            delay: { ...defaultEffects.delay, ...preset.effects.delay },
+                            distortion: { ...defaultEffects.distortion, ...preset.effects.distortion },
+                            pitch: { ...defaultEffects.pitch, ...preset.effects.pitch },
+                            lowpass: { ...defaultEffects.lowpass, ...preset.effects.lowpass },
+                            highpass: { ...defaultEffects.highpass, ...preset.effects.highpass },
+                            volume: { ...defaultEffects.volume, ...preset.effects.volume },
+                            compressor: defaultEffects.compressor, // Use defaults for new effects
+                            limiter: defaultEffects.limiter,
+                            tapeSaturation: defaultEffects.tapeSaturation,
+                            bitCrusher: defaultEffects.bitCrusher,
+                            sidechain: defaultEffects.sidechain,
+                          };
+                          setEffects(mergedEffects);
+                          const processed = await processAudio(audioBuffer, mergedEffects);
+                          const wavBlob = audioBufferToWav(processed);
+                          const url = URL.createObjectURL(wavBlob);
+                          setProcessedAudioUrl(url);
+                          const newBuffer = await loadAudioFile(new File([wavBlob], 'processed.wav', { type: 'audio/wav' }));
+                          setAudioBuffer(newBuffer);
+                          setCurrentTime(0);
+                          setTimeout(() => drawWaveform(0), 100);
+                        } catch (error) {
+                          console.error('Error applying preset:', error);
+                          alert('Error applying preset');
+                        } finally {
+                          setIsProcessing(false);
+                        }
+                      }}
+                      disabled={isProcessing}
+                    >
+                      <div className={styles.lofiPresetEmoji}>{preset.emoji}</div>
+                      <div className={styles.lofiPresetName}>{preset.name}</div>
+                      <div className={styles.lofiPresetDescription}>{preset.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {activeTab === 'trim' && (
               <div className={styles.trimSection}>
                 <h3>Trim/Crop Audio</h3>
@@ -499,6 +603,39 @@ export default function AdvancedAudioEditor() {
             {activeTab === 'tools' && (
               <div className={styles.toolsSection}>
                 <h3>Audio Tools</h3>
+                
+                {/* Fade In/Out Controls */}
+                <div className={styles.fadeSection}>
+                  <h4>Fade In / Fade Out</h4>
+                  <div className={styles.fadeControls}>
+                    <div className={styles.fadeControl}>
+                      <label>Fade In (seconds)</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="10"
+                        step="0.1"
+                        value={fadeSettings.fadeIn}
+                        onChange={(e) => setFadeSettings({ ...fadeSettings, fadeIn: parseFloat(e.target.value) })}
+                      />
+                      <span>{fadeSettings.fadeIn.toFixed(1)}s</span>
+                    </div>
+                    <div className={styles.fadeControl}>
+                      <label>Fade Out (seconds)</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="10"
+                        step="0.1"
+                        value={fadeSettings.fadeOut}
+                        onChange={(e) => setFadeSettings({ ...fadeSettings, fadeOut: parseFloat(e.target.value) })}
+                      />
+                      <span>{fadeSettings.fadeOut.toFixed(1)}s</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reverse Audio */}
                 <div className={styles.toolsGrid}>
                   <button
                     onClick={async () => {
@@ -524,7 +661,37 @@ export default function AdvancedAudioEditor() {
                     Reverse Audio
                   </button>
                 </div>
+
+                {/* Apply Button */}
+                <button
+                  onClick={handleProcess}
+                  disabled={isProcessing}
+                  className="btn btn-primary"
+                  style={{ marginTop: '24px' }}
+                >
+                  {isProcessing ? 'Processing...' : 'Apply Tools'}
+                </button>
               </div>
+            )}
+
+            {activeTab === 'generator' && (
+              <LofiGeneratorTab
+                onGenerateComplete={(url, title) => {
+                  setProcessedAudioUrl(url);
+                  setProcessedAudioTitle(title);
+                  setCurrentTime(0);
+                  // Load as audio buffer for waveform
+                  const audio = new Audio(url);
+                  audio.onloadedmetadata = () => {
+                    setDuration(audio.duration);
+                  };
+                }}
+                onError={(error) => alert(error)}
+                onProcessingChange={(isProcessing, message) => {
+                  setIsProcessing(isProcessing);
+                  setProcessingMessage(message || 'Processing...');
+                }}
+              />
             )}
 
             {activeTab === 'effects' && (
@@ -772,7 +939,291 @@ export default function AdvancedAudioEditor() {
                       </div>
                     )}
                   </div>
-                </div>
+
+                  {/* Compressor */}
+                  <div className={styles.effectCard}>
+                    <label className={styles.effectLabel}>
+                      <input
+                        type="checkbox"
+                        checked={effects.compressor.enabled}
+                        onChange={(e) => updateEffect('compressor', { enabled: e.target.checked })}
+                      />
+                      <span>Compressor</span>
+                    </label>
+                    {effects.compressor.enabled && (
+                      <>
+                        <div className={styles.sliderGroup}>
+                          <label className={styles.sliderLabel}>Threshold</label>
+                          <input
+                            type="range"
+                            min="-60"
+                            max="0"
+                            step="1"
+                            value={effects.compressor.threshold}
+                            onChange={(e) => updateEffect('compressor', { threshold: parseFloat(e.target.value) })}
+                          />
+                          <span className={styles.sliderValue}>{effects.compressor.threshold} dB</span>
+                        </div>
+                        <div className={styles.sliderGroup}>
+                          <label className={styles.sliderLabel}>Ratio</label>
+                          <input
+                            type="range"
+                            min="1"
+                            max="20"
+                            step="0.5"
+                            value={effects.compressor.ratio}
+                            onChange={(e) => updateEffect('compressor', { ratio: parseFloat(e.target.value) })}
+                          />
+                          <span className={styles.sliderValue}>{effects.compressor.ratio}:1</span>
+                        </div>
+                        <div className={styles.sliderGroup}>
+                          <label className={styles.sliderLabel}>Attack</label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.001"
+                            value={effects.compressor.attack}
+                            onChange={(e) => updateEffect('compressor', { attack: parseFloat(e.target.value) })}
+                          />
+                          <span className={styles.sliderValue}>{(effects.compressor.attack * 1000).toFixed(0)} ms</span>
+                        </div>
+                        <div className={styles.sliderGroup}>
+                          <label className={styles.sliderLabel}>Release</label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={effects.compressor.release}
+                            onChange={(e) => updateEffect('compressor', { release: parseFloat(e.target.value) })}
+                          />
+                          <span className={styles.sliderValue}>{(effects.compressor.release * 1000).toFixed(0)} ms</span>
+                        </div>
+                        <div className={styles.sliderGroup}>
+                          <label className={styles.sliderLabel}>Knee</label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="40"
+                            step="1"
+                            value={effects.compressor.knee}
+                            onChange={(e) => updateEffect('compressor', { knee: parseFloat(e.target.value) })}
+                          />
+                          <span className={styles.sliderValue}>{effects.compressor.knee} dB</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Limiter */}
+                  <div className={styles.effectCard}>
+                    <label className={styles.effectLabel}>
+                      <input
+                        type="checkbox"
+                        checked={effects.limiter.enabled}
+                        onChange={(e) => updateEffect('limiter', { enabled: e.target.checked })}
+                      />
+                      <span>Limiter</span>
+                    </label>
+                    {effects.limiter.enabled && (
+                      <>
+                        <div className={styles.sliderGroup}>
+                          <label className={styles.sliderLabel}>Threshold</label>
+                          <input
+                            type="range"
+                            min="-60"
+                            max="0"
+                            step="1"
+                            value={effects.limiter.threshold}
+                            onChange={(e) => updateEffect('limiter', { threshold: parseFloat(e.target.value) })}
+                          />
+                          <span className={styles.sliderValue}>{effects.limiter.threshold} dB</span>
+                        </div>
+                        <div className={styles.sliderGroup}>
+                          <label className={styles.sliderLabel}>Release</label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.001"
+                            value={effects.limiter.release}
+                            onChange={(e) => updateEffect('limiter', { release: parseFloat(e.target.value) })}
+                          />
+                          <span className={styles.sliderValue}>{(effects.limiter.release * 1000).toFixed(0)} ms</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Tape Saturation */}
+                  <div className={styles.effectCard}>
+                    <label className={styles.effectLabel}>
+                      <input
+                        type="checkbox"
+                        checked={effects.tapeSaturation.enabled}
+                        onChange={(e) => updateEffect('tapeSaturation', { enabled: e.target.checked })}
+                      />
+                      <span>Tape Saturation</span>
+                    </label>
+                    {effects.tapeSaturation.enabled && (
+                      <>
+                        <div className={styles.sliderGroup}>
+                          <label className={styles.sliderLabel}>Drive</label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={effects.tapeSaturation.drive}
+                            onChange={(e) => updateEffect('tapeSaturation', { drive: parseFloat(e.target.value) })}
+                          />
+                          <span className={styles.sliderValue}>{(effects.tapeSaturation.drive * 100).toFixed(0)}%</span>
+                        </div>
+                        <div className={styles.sliderGroup}>
+                          <label className={styles.sliderLabel}>Bias</label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={effects.tapeSaturation.bias}
+                            onChange={(e) => updateEffect('tapeSaturation', { bias: parseFloat(e.target.value) })}
+                          />
+                          <span className={styles.sliderValue}>{(effects.tapeSaturation.bias * 100).toFixed(0)}%</span>
+                        </div>
+                        <div className={styles.sliderGroup}>
+                          <label className={styles.sliderLabel}>Amount</label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={effects.tapeSaturation.amount}
+                            onChange={(e) => updateEffect('tapeSaturation', { amount: parseFloat(e.target.value) })}
+                          />
+                          <span className={styles.sliderValue}>{(effects.tapeSaturation.amount * 100).toFixed(0)}%</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+        {/* Bit Crusher */}
+        <div className={styles.effectCard}>
+          <label className={styles.effectLabel}>
+            <input
+              type="checkbox"
+              checked={effects.bitCrusher.enabled}
+              onChange={(e) => updateEffect('bitCrusher', { enabled: e.target.checked })}
+            />
+            <span>Bit Crusher</span>
+          </label>
+          {effects.bitCrusher.enabled && (
+            <>
+              <div className={styles.sliderGroup}>
+                <label className={styles.sliderLabel}>Bit Depth</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="16"
+                  step="1"
+                  value={effects.bitCrusher.bits}
+                  onChange={(e) => updateEffect('bitCrusher', { bits: parseInt(e.target.value) })}
+                />
+                <span className={styles.sliderValue}>{effects.bitCrusher.bits} bits</span>
+              </div>
+              <div className={styles.sliderGroup}>
+                <label className={styles.sliderLabel}>Sample Rate Reduction</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="100"
+                  step="1"
+                  value={effects.bitCrusher.reduction}
+                  onChange={(e) => updateEffect('bitCrusher', { reduction: parseInt(e.target.value) })}
+                />
+                <span className={styles.sliderValue}>{effects.bitCrusher.reduction}x</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Sidechain Compression */}
+        <div className={styles.effectCard}>
+          <label className={styles.effectLabel}>
+            <input
+              type="checkbox"
+              checked={effects.sidechain.enabled}
+              onChange={(e) => updateEffect('sidechain', { enabled: e.target.checked })}
+            />
+            <span>Sidechain Compression</span>
+          </label>
+          {effects.sidechain.enabled && (
+            <>
+              <div className={styles.sliderGroup}>
+                <label className={styles.sliderLabel}>Threshold</label>
+                <input
+                  type="range"
+                  min="-60"
+                  max="0"
+                  step="1"
+                  value={effects.sidechain.threshold}
+                  onChange={(e) => updateEffect('sidechain', { threshold: parseFloat(e.target.value) })}
+                />
+                <span className={styles.sliderValue}>{effects.sidechain.threshold} dB</span>
+              </div>
+              <div className={styles.sliderGroup}>
+                <label className={styles.sliderLabel}>Ratio</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="20"
+                  step="0.5"
+                  value={effects.sidechain.ratio}
+                  onChange={(e) => updateEffect('sidechain', { ratio: parseFloat(e.target.value) })}
+                />
+                <span className={styles.sliderValue}>{effects.sidechain.ratio}:1</span>
+              </div>
+              <div className={styles.sliderGroup}>
+                <label className={styles.sliderLabel}>Attack</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.001"
+                  value={effects.sidechain.attack}
+                  onChange={(e) => updateEffect('sidechain', { attack: parseFloat(e.target.value) })}
+                />
+                <span className={styles.sliderValue}>{(effects.sidechain.attack * 1000).toFixed(0)} ms</span>
+              </div>
+              <div className={styles.sliderGroup}>
+                <label className={styles.sliderLabel}>Release</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={effects.sidechain.release}
+                  onChange={(e) => updateEffect('sidechain', { release: parseFloat(e.target.value) })}
+                />
+                <span className={styles.sliderValue}>{(effects.sidechain.release * 1000).toFixed(0)} ms</span>
+              </div>
+              <div className={styles.sliderGroup}>
+                <label className={styles.sliderLabel}>Depth</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={effects.sidechain.depth}
+                  onChange={(e) => updateEffect('sidechain', { depth: parseFloat(e.target.value) })}
+                />
+                <span className={styles.sliderValue}>{(effects.sidechain.depth * 100).toFixed(0)}%</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
                 <button
                   onClick={handleProcess}
                   disabled={isProcessing}
@@ -790,7 +1241,7 @@ export default function AdvancedAudioEditor() {
             <div className={clsx('glass-card', styles.playerSection)}>
               <div className={styles.playerHeader}>
                 <Music size={20} />
-                <h3>Processed Audio</h3>
+                <h3>{processedAudioTitle || 'Processed Audio'}</h3>
               </div>
               <audio
                 ref={audioRef}
@@ -830,6 +1281,7 @@ export default function AdvancedAudioEditor() {
         </>
       )}
     </div>
+    </>
   );
 }
 

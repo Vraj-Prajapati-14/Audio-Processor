@@ -1,0 +1,75 @@
+.effectsSection {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.effectsHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.effectsHeader h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.effectsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.effectCard {
+    padding: 20px;
+    background: rgba(99, 102, 241, 0.05);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.effectLabel {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.effectLabel input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--accent-primary);
+}
+
+.sliderGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.sliderLabel {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.sliderValue {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+    min-width: 100px;
+}
+

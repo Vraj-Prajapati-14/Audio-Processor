@@ -2,6 +2,7 @@ import AdvancedAudioEditor from '@/components/AdvancedAudioEditor';
 import FAQ from '@/components/FAQ';
 import styles from './Home.module.css';
 import { Metadata } from 'next';
+import { Music, Zap, Shield, Gift, Smartphone, Sliders } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'AudioFX Pro - Free Online Audio Effects Processor | Lofi, Reverb, Delay & More',
@@ -69,37 +70,55 @@ export default function Home() {
           <h2 className={styles.sectionTitle}>Why Choose AudioFX Pro?</h2>
           <div className={styles.grid}>
             <div>
-              <h3 className={styles.featureTitle}>🎵 Professional Effects</h3>
+              <div className={styles.featureIcon}>
+                <Music size={32} />
+              </div>
+              <h3 className={styles.featureTitle}>Professional Effects</h3>
               <p className={styles.text}>
                 Access a wide range of audio effects including lofi, reverb, delay, distortion, pitch shifting, and filters. Create the perfect sound for your projects.
               </p>
             </div>
             <div>
-              <h3 className={styles.featureTitle}>⚡ Instant Processing</h3>
+              <div className={styles.featureIcon}>
+                <Zap size={32} />
+              </div>
+              <h3 className={styles.featureTitle}>Instant Processing</h3>
               <p className={styles.text}>
                 Process your audio files instantly using advanced Web Audio API technology. No waiting for uploads or server processing.
               </p>
             </div>
             <div>
-              <h3 className={styles.featureTitle}>🔒 Complete Privacy</h3>
+              <div className={styles.featureIcon}>
+                <Shield size={32} />
+              </div>
+              <h3 className={styles.featureTitle}>Complete Privacy</h3>
               <p className={styles.text}>
                 All audio processing happens locally in your browser. Your files never leave your device, ensuring complete privacy and security.
               </p>
             </div>
             <div>
-              <h3 className={styles.featureTitle}>🆓 100% Free</h3>
+              <div className={styles.featureIcon}>
+                <Gift size={32} />
+              </div>
+              <h3 className={styles.featureTitle}>100% Free</h3>
               <p className={styles.text}>
                 Use all features completely free, with no watermarks, no limits, and no registration required. Process as many files as you want.
               </p>
             </div>
             <div>
-              <h3 className={styles.featureTitle}>📱 Works Everywhere</h3>
+              <div className={styles.featureIcon}>
+                <Smartphone size={32} />
+              </div>
+              <h3 className={styles.featureTitle}>Works Everywhere</h3>
               <p className={styles.text}>
                 Fully responsive design that works seamlessly on desktop, tablet, and mobile devices. Process audio on any device, anywhere.
               </p>
             </div>
             <div>
-              <h3 className={styles.featureTitle}>🎛️ Real-time Controls</h3>
+              <div className={styles.featureIcon}>
+                <Sliders size={32} />
+              </div>
+              <h3 className={styles.featureTitle}>Real-time Controls</h3>
               <p className={styles.text}>
                 Adjust effect parameters in real-time with intuitive sliders and controls. Preview your changes before processing.
               </p>

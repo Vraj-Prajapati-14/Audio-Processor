@@ -21,6 +21,11 @@ export interface MergeSettings {
   volume2: number; // 0-1
 }
 
+export interface FadeSettings {
+  fadeIn: number; // 0-10 seconds
+  fadeOut: number; // 0-10 seconds
+}
+
 /**
  * Trim/crop audio to specified time range
  */
@@ -233,6 +238,66 @@ export function getWaveformData(
   return waveform;
 }
 
+
+/**
+ * Apply fade in and/or fade out to audio
+ */
+export async function applyFade(
+  audioBuffer: AudioBuffer,
+  fadeSettings: FadeSettings
+): Promise<AudioBuffer> {
+  const numberOfChannels = audioBuffer.numberOfChannels;
+  const length = audioBuffer.length;
+  const sampleRate = audioBuffer.sampleRate;
+  const duration = audioBuffer.duration;
+
+  // Create a new buffer with the same properties
+  const fadedBuffer = new AudioBuffer({
+    numberOfChannels,
+    length,
+    sampleRate,
+  });
+
+  const fadeInSamples = Math.floor(fadeSettings.fadeIn * sampleRate);
+  const fadeOutSamples = Math.floor(fadeSettings.fadeOut * sampleRate);
+
+  // Process each channel
+  for (let channel = 0; channel < numberOfChannels; channel++) {
+    const inputData = audioBuffer.getChannelData(channel);
+    const outputData = fadedBuffer.getChannelData(channel);
+
+    for (let i = 0; i < length; i++) {
+      let gain = 1.0;
+
+      // Apply fade in
+      if (fadeSettings.fadeIn > 0 && i < fadeInSamples) {
+        gain = i / fadeInSamples; // Linear fade from 0 to 1
+      }
+
+      // Apply fade out
+      if (fadeSettings.fadeOut > 0 && i >= length - fadeOutSamples) {
+        const fadeOutProgress = (length - i) / fadeOutSamples; // Linear fade from 1 to 0
+        gain = Math.min(gain, fadeOutProgress);
+      }
+
+      outputData[i] = inputData[i] * gain;
+    }
+  }
+
+  // Render through OfflineAudioContext to ensure proper format
+  const offlineContext = new OfflineAudioContext(
+    numberOfChannels,
+    length,
+    sampleRate
+  );
+
+  const source = offlineContext.createBufferSource();
+  source.buffer = fadedBuffer;
+  source.connect(offlineContext.destination);
+  source.start(0);
+
+  return await offlineContext.startRendering();
+}
 
 /**
  * Get real-time frequency data from audio element

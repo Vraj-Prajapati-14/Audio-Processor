@@ -1,0 +1,83 @@
+.loaderOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.loaderContent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 40px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    min-width: 300px;
+}
+
+.spinner {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.spinnerCircle {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.spinnerCircle:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.spinnerCircle:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+.spinnerCircle:nth-child(3) {
+    animation-delay: 0;
+}
+
+@keyframes bounce {
+    0%, 80%, 100% {
+        transform: scale(0);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.loaderMessage {
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0;
+    text-align: center;
+}
+

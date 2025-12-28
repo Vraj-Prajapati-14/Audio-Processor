@@ -4,7 +4,7 @@ import { Mail, MessageSquare, HelpCircle } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Contact Us | AudioFX Pro',
-  description: 'Contact AudioFX Pro for questions, feedback, or support. We're here to help!',
+  description: 'Contact AudioFX Pro for questions, feedback, or support. We are here to help!',
   alternates: {
     canonical: 'https://www.audiofxpro.com/contact',
   },

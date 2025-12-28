@@ -41,6 +41,38 @@ export interface AudioEffects {
     enabled: boolean;
     gain: number; // 0-2
   };
+  compressor: {
+    enabled: boolean;
+    threshold: number; // -60 to 0 dB
+    ratio: number; // 1 to 20
+    attack: number; // 0 to 1 seconds
+    release: number; // 0 to 1 seconds
+    knee: number; // 0 to 40 dB
+  };
+  limiter: {
+    enabled: boolean;
+    threshold: number; // -60 to 0 dB
+    release: number; // 0 to 1 seconds
+  };
+  tapeSaturation: {
+    enabled: boolean;
+    drive: number; // 0-1 (how much saturation)
+    bias: number; // 0-1 (DC bias offset)
+    amount: number; // 0-1 (wet/dry mix)
+  };
+  bitCrusher: {
+    enabled: boolean;
+    bits: number; // 1-16 bits
+    reduction: number; // 1-100 (sample rate reduction factor)
+  };
+  sidechain: {
+    enabled: boolean;
+    threshold: number; // -60 to 0 dB
+    ratio: number; // 1 to 20
+    attack: number; // 0 to 1 seconds
+    release: number; // 0 to 1 seconds
+    depth: number; // 0-1 (how much sidechain ducking)
+  };
 }
 
 export const defaultEffects: AudioEffects = {
@@ -82,6 +114,38 @@ export const defaultEffects: AudioEffects = {
     enabled: true,
     gain: 1,
   },
+  compressor: {
+    enabled: false,
+    threshold: -24,
+    ratio: 4,
+    attack: 0.003,
+    release: 0.25,
+    knee: 30,
+  },
+  limiter: {
+    enabled: false,
+    threshold: -1,
+    release: 0.003,
+  },
+  tapeSaturation: {
+    enabled: false,
+    drive: 0.5,
+    bias: 0.1,
+    amount: 0.7,
+  },
+  bitCrusher: {
+    enabled: false,
+    bits: 8,
+    reduction: 4,
+  },
+  sidechain: {
+    enabled: false,
+    threshold: -24,
+    ratio: 4,
+    attack: 0.003,
+    release: 0.25,
+    depth: 0.6,
+  },
 };
 
 /**
@@ -100,16 +164,27 @@ export async function processAudio(
   audioBuffer: AudioBuffer,
   effects: AudioEffects
 ): Promise<AudioBuffer> {
+  let workingBuffer = audioBuffer;
+
+  // Bit Crusher must be applied first (before offline context)
+  if (effects.bitCrusher.enabled) {
+    workingBuffer = applyBitCrusher(
+      workingBuffer,
+      effects.bitCrusher.bits,
+      effects.bitCrusher.reduction
+    );
+  }
+
   // Create offline context for rendering
   const offlineContext = new OfflineAudioContext(
-    audioBuffer.numberOfChannels,
-    audioBuffer.length,
-    audioBuffer.sampleRate
+    workingBuffer.numberOfChannels,
+    workingBuffer.length,
+    workingBuffer.sampleRate
   );
 
   // Create source
   const source = offlineContext.createBufferSource();
-  source.buffer = audioBuffer;
+  source.buffer = workingBuffer;
 
   // Build effect chain
   let lastNode: AudioNode = source;
@@ -158,6 +233,7 @@ export async function processAudio(
   // Distortion
   if (effects.distortion.enabled) {
     const distortion = offlineContext.createWaveShaper();
+    // @ts-ignore - Float32Array type compatibility issue
     distortion.curve = makeDistortionCurve(effects.distortion.amount);
     distortion.oversample = '4x';
     lastNode.connect(distortion);
@@ -221,12 +297,73 @@ export async function processAudio(
     lastNode = mixGain;
   }
 
+  // Compressor
+  if (effects.compressor.enabled) {
+    const compressor = offlineContext.createDynamicsCompressor();
+    compressor.threshold.value = effects.compressor.threshold;
+    compressor.ratio.value = effects.compressor.ratio;
+    compressor.attack.value = effects.compressor.attack;
+    compressor.release.value = effects.compressor.release;
+    compressor.knee.value = effects.compressor.knee;
+    lastNode.connect(compressor);
+    lastNode = compressor;
+  }
+
+  // Limiter (use compressor with high ratio as limiter)
+  if (effects.limiter.enabled) {
+    const limiter = offlineContext.createDynamicsCompressor();
+    limiter.threshold.value = effects.limiter.threshold;
+    limiter.ratio.value = 20; // Very high ratio for limiting
+    limiter.attack.value = 0; // Instant attack
+    limiter.release.value = effects.limiter.release;
+    limiter.knee.value = 0; // Hard knee for limiting
+    lastNode.connect(limiter);
+    lastNode = limiter;
+  }
+
+  // Tape Saturation (soft clipping with warmth)
+  if (effects.tapeSaturation.enabled) {
+    const waveShaper = offlineContext.createWaveShaper();
+    // @ts-ignore - Float32Array type compatibility issue
+    waveShaper.curve = makeTapeSaturationCurve(effects.tapeSaturation.drive, effects.tapeSaturation.bias);
+    waveShaper.oversample = '4x';
+    
+    // Mix dry and wet
+    const wetGain = offlineContext.createGain();
+    wetGain.gain.value = effects.tapeSaturation.amount;
+    const dryGain = offlineContext.createGain();
+    dryGain.gain.value = 1 - effects.tapeSaturation.amount;
+    
+    const mixGain = offlineContext.createGain();
+    lastNode.connect(dryGain);
+    dryGain.connect(mixGain);
+    lastNode.connect(waveShaper);
+    waveShaper.connect(wetGain);
+    wetGain.connect(mixGain);
+    lastNode = mixGain;
+  }
+
   // Connect to destination
   lastNode.connect(offlineContext.destination);
 
   // Render audio
   source.start(0);
-  return await offlineContext.startRendering();
+  let rendered = await offlineContext.startRendering();
+
+  // Apply sidechain compression after all other effects
+  if (effects.sidechain.enabled) {
+    const { applySidechainCompressionEnvelope } = await import('./sidechain');
+    rendered = await applySidechainCompressionEnvelope(
+      rendered,
+      effects.sidechain.threshold,
+      effects.sidechain.ratio,
+      effects.sidechain.attack,
+      effects.sidechain.release,
+      effects.sidechain.depth
+    );
+  }
+
+  return rendered;
 }
 
 /**
@@ -243,6 +380,71 @@ function makeDistortionCurve(amount: number): Float32Array {
   }
 
   return curve;
+}
+
+/**
+ * Create tape saturation curve for WaveShaper
+ * Simulates the warm, soft clipping characteristic of analog tape
+ */
+function makeTapeSaturationCurve(drive: number, bias: number): Float32Array {
+  const samples = 44100;
+  const curve = new Float32Array(samples);
+  const driveAmount = drive * 10; // Scale drive
+  
+  for (let i = 0; i < samples; i++) {
+    const x = (i * 2) / samples - 1;
+    // Add bias (DC offset)
+    const biased = x + bias * 0.1;
+    // Soft saturation using tanh-like curve
+    const saturated = Math.tanh(biased * (1 + driveAmount));
+    curve[i] = saturated * (1 - bias * 0.1); // Compensate for bias
+  }
+
+  return curve;
+}
+
+/**
+ * Apply bit crusher effect to audio buffer
+ * Reduces bit depth and sample rate for Lo-Fi effect
+ */
+function applyBitCrusher(
+  audioBuffer: AudioBuffer,
+  bits: number,
+  reduction: number
+): AudioBuffer {
+  const numberOfChannels = audioBuffer.numberOfChannels;
+  const length = audioBuffer.length;
+  const sampleRate = audioBuffer.sampleRate;
+  
+  // Create new buffer with same properties (we'll downsample in the data)
+  const crushedBuffer = new AudioBuffer({
+    numberOfChannels,
+    length,
+    sampleRate,
+  });
+
+  const bitDepth = Math.max(1, Math.min(16, bits));
+  const maxValue = Math.pow(2, bitDepth - 1);
+  const step = 2 / maxValue;
+
+  // Process each channel
+  for (let channel = 0; channel < numberOfChannels; channel++) {
+    const inputData = audioBuffer.getChannelData(channel);
+    const outputData = crushedBuffer.getChannelData(channel);
+    
+    // Reduce sample rate and bit depth
+    for (let i = 0; i < length; i++) {
+      // Sample rate reduction: skip samples
+      const sampleIndex = Math.floor(i / reduction) * reduction;
+      const sample = inputData[Math.min(sampleIndex, length - 1)];
+      
+      // Quantize to bit depth
+      const quantized = Math.floor(sample / step + 0.5) * step;
+      outputData[i] = Math.max(-1, Math.min(1, quantized));
+    }
+  }
+
+  return crushedBuffer;
 }
 
 /**

@@ -82,7 +82,7 @@ export default function TermsPage() {
             errors. AudioFX Pro does not warrant that any of the materials on its website are accurate, 
             complete, or current. AudioFX Pro may make changes to the materials contained on its website 
             at any time without notice.
-          </div>
+          </p>
         </div>
 
         <div className="glass-card">

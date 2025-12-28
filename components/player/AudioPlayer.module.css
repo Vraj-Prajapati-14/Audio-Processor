@@ -1,0 +1,101 @@
+.playerSection {
+    margin-top: 24px;
+}
+
+.playerHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.playerHeader svg {
+    color: var(--accent-primary);
+}
+
+.playerHeader h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.playerControls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.progressContainer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+    min-width: 0;
+}
+
+.progressContainer span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    min-width: 60px;
+}
+
+.progressBar {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.progressBar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.5);
+    transition: all 0.2s ease;
+    margin-top: -5px;
+}
+
+.progressBar::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+.progressBar::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.5);
+    transition: all 0.2s ease;
+}
+
+.progressBar::-moz-range-thumb:hover {
+    transform: scale(1.15);
+}
+
+.progressBar::-webkit-slider-runnable-track {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+}
+
+.progressBar::-moz-range-track {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--bg-tertiary);
+    border: none;
+}
+

@@ -65,6 +65,11 @@
     font-size: 0.9375rem;
 }
 
+.featureIcon {
+    color: var(--accent-primary);
+    margin-bottom: 16px;
+}
+
 
 @media (max-width: 768px) {
     .hero {

@@ -1,4 +1,5 @@
-import AudioProcessor from '@/components/AudioProcessor';
+import AdvancedAudioEditor from '@/components/AdvancedAudioEditor';
+import FAQ from '@/components/FAQ';
 import styles from './Home.module.css';
 import { Metadata } from 'next';
 
@@ -61,7 +62,7 @@ export default function Home() {
         </p>
       </section>
 
-      <AudioProcessor />
+      <AdvancedAudioEditor />
 
       <section className={styles.section}>
         <div className="glass-card">
@@ -108,44 +109,32 @@ export default function Home() {
 
         <div className="glass-card">
           <h2 className={styles.sectionTitle}>Frequently Asked Questions</h2>
-          <div className={styles.faqList}>
-            <div className={styles.faqItem}>
-              <h4 className={styles.faqQuestion}>What audio formats are supported?</h4>
-              <p className={styles.text}>
-                AudioFX Pro supports a wide range of audio formats including MP3, MPEG, M4A, WAV, OGG, FLAC, AAC, WMA, OPUS, WEBM, 3GP, AMR, AIFF, AU, RA, and more. Your browser will handle the format conversion automatically using the Web Audio API.
-              </p>
-            </div>
-            <div className={styles.faqItem}>
-              <h4 className={styles.faqQuestion}>Is my audio data secure?</h4>
-              <p className={styles.text}>
-                Yes! All audio processing happens entirely in your browser using Web Audio API. Your files never leave your device and are never uploaded to any server.
-              </p>
-            </div>
-            <div className={styles.faqItem}>
-              <h4 className={styles.faqQuestion}>Can I combine multiple effects?</h4>
-              <p className={styles.text}>
-                Absolutely! You can enable and combine multiple effects at the same time. For example, you can add lofi, reverb, and delay all together for unique sound combinations.
-              </p>
-            </div>
-            <div className={styles.faqItem}>
-              <h4 className={styles.faqQuestion}>What is the lofi effect?</h4>
-              <p className={styles.text}>
-                The lofi effect simulates the warm, nostalgic sound of lo-fi music by applying a lowpass filter to reduce high frequencies, creating that characteristic "vintage" sound.
-              </p>
-            </div>
-            <div className={styles.faqItem}>
-              <h4 className={styles.faqQuestion}>Are there any file size limits?</h4>
-              <p className={styles.text}>
-                The processing is limited by your browser's memory capabilities. Generally, files up to 50-100MB work well, but performance may vary based on your device.
-              </p>
-            </div>
-            <div className={styles.faqItem}>
-              <h4 className={styles.faqQuestion}>Can I use this for commercial projects?</h4>
-              <p className={styles.text}>
-                Yes, AudioFX Pro is free to use for both personal and commercial projects. There are no restrictions on how you use the processed audio files.
-              </p>
-            </div>
-          </div>
+          <FAQ items={[
+            {
+              question: 'What audio formats are supported?',
+              answer: 'AudioFX Pro supports a wide range of audio formats including MP3, MPEG, M4A, WAV, OGG, FLAC, AAC, WMA, OPUS, WEBM, 3GP, AMR, AIFF, AU, RA, and more. Your browser will handle the format conversion automatically using the Web Audio API.'
+            },
+            {
+              question: 'Is my audio data secure?',
+              answer: 'Yes! All audio processing happens entirely in your browser using Web Audio API. Your files never leave your device and are never uploaded to any server. Complete privacy guaranteed.'
+            },
+            {
+              question: 'Can I combine multiple effects?',
+              answer: 'Absolutely! You can enable and combine multiple effects at the same time. For example, you can add lofi, reverb, and delay all together for unique sound combinations. Experiment freely!'
+            },
+            {
+              question: 'What is the lofi effect?',
+              answer: 'The lofi effect simulates the warm, nostalgic sound of lo-fi music by applying a lowpass filter to reduce high frequencies, creating that characteristic "vintage" sound popular in chill-hop and lo-fi hip-hop genres.'
+            },
+            {
+              question: 'Are there any file size limits?',
+              answer: 'The processing is limited by your browser\'s memory capabilities. Generally, files up to 50-100MB work well, but performance may vary based on your device. For best results, we recommend files under 100MB.'
+            },
+            {
+              question: 'Can I use this for commercial projects?',
+              answer: 'Yes, AudioFX Pro is free to use for both personal and commercial projects. There are no restrictions on how you use the processed audio files. No attribution required.'
+            }
+          ]} />
         </div>
       </section>
     </div>

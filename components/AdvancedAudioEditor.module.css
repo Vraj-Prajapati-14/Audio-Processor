@@ -1,7 +1,7 @@
 .container {
     display: flex;
     flex-direction: column;
-    gap: 32px;
+    gap: 24px;
     max-width: 1200px;
     margin: 0 auto;
 }
@@ -11,7 +11,7 @@
 }
 
 .uploadArea {
-    margin-bottom: 24px;
+    margin-bottom: 16px;
 }
 
 .uploadLabel {
@@ -38,10 +38,9 @@
 }
 
 .uploadLabel span:first-of-type {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     font-weight: 600;
     color: var(--text-primary);
-    letter-spacing: 0.01em;
 }
 
 .fileInfo {
@@ -57,26 +56,211 @@
     line-height: 1.6;
 }
 
-.processBtn {
+.waveformSection {
+    padding: 20px;
+    position: relative;
+}
+
+.waveformCanvas {
+    width: 100%;
+    height: 100px;
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.2);
+    display: block;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.waveformCanvas:hover {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    border-bottom: 2px solid var(--glass-border);
+}
+
+.tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    margin-bottom: -2px;
+}
+
+.tab:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.tabActive {
+    color: var(--accent-primary);
+    border-bottom-color: var(--accent-primary);
+}
+
+.tabContent {
+    padding: 32px;
+    min-height: 300px;
+}
+
+.tabContent h3 {
+    font-size: 1.5rem;
+    margin-bottom: 24px;
+    color: var(--text-primary);
+}
+
+.trimSection,
+.eqSection,
+.mergeSection,
+.toolsSection {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.trimControls {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.timeControl {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
     min-width: 200px;
-    padding: 14px 32px;
+}
+
+.timeControl label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.timeControl input[type="number"] {
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
     font-size: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.timeControl input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.eqControls {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+}
+
+.eqControl {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.eqControl label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.eqControl input[type="range"] {
+    width: 100%;
+}
+
+.eqControl span {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+}
+
+.mergeUpload {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.mergeUpload input[type="file"] {
+    display: none;
+}
+
+.mergeControls {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.mergeControl {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.mergeControl label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.mergeControl input[type="range"] {
+    width: 100%;
+}
+
+.mergeControl span {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+}
+
+.toolsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
 }
 
 .effectsSection {
-    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
 }
 
-.sectionHeader {
+.effectsHeader {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
+    margin-bottom: 8px;
 }
 
-.sectionHeader h2 {
+.effectsHeader h3 {
     margin: 0;
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--text-primary);
 }
@@ -84,7 +268,7 @@
 .effectsGrid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 24px;
+    gap: 20px;
 }
 
 .effectCard {
@@ -104,7 +288,7 @@
 }
 
 .effectLabel {
-    font-size: 1.0625rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 4px;
@@ -127,13 +311,11 @@
 }
 
 .sliderLabel {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     font-weight: 500;
     color: var(--text-muted);
-    margin: 0;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    font-size: 0.75rem;
 }
 
 .sliderValue {
@@ -146,7 +328,7 @@
 }
 
 .playerSection {
-    margin-top: 32px;
+    margin-top: 24px;
 }
 
 .playerHeader {
@@ -170,18 +352,8 @@
 .playerControls {
     display: flex;
     align-items: center;
-    gap: 24px;
+    gap: 20px;
     flex-wrap: wrap;
-}
-
-.playBtn {
-    min-width: 56px;
-    min-height: 56px;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
 }
 
 .progressContainer {
@@ -192,15 +364,12 @@
     min-width: 0;
 }
 
-.timeDisplay {
-    display: flex;
-    align-items: center;
+.progressContainer span {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.875rem;
     color: var(--text-secondary);
-    min-width: 60px;
-    flex-shrink: 0;
     font-weight: 600;
+    min-width: 60px;
 }
 
 .progressBar {
@@ -259,61 +428,34 @@
     border: none;
 }
 
-.progressBar:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.progressBar:disabled::-webkit-slider-thumb {
-    cursor: not-allowed;
-}
-
-.progressBar:disabled::-moz-range-thumb {
-    cursor: not-allowed;
-}
-
-.downloadBtn {
-    margin-left: auto;
-}
-
 @media (max-width: 768px) {
-    .effectsGrid {
-        grid-template-columns: 1fr;
-        gap: 20px;
+    .tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .tab {
+        padding: 10px 16px;
+        font-size: 0.875rem;
+    }
+
+    .tabContent {
+        padding: 24px;
+    }
+
+    .trimControls,
+    .eqControls,
+    .mergeControls {
+        flex-direction: column;
     }
 
     .playerControls {
         flex-direction: column;
-        align-items: stretch;
-        gap: 20px;
+        gap: 16px;
     }
 
     .progressContainer {
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .timeDisplay {
-        min-width: auto;
-        font-size: 0.8125rem;
         width: 100%;
-        justify-content: center;
-    }
-
-    .downloadBtn {
-        margin-left: 0;
-        width: 100%;
-    }
-
-    .uploadLabel {
-        padding: 60px 30px;
-    }
-
-    .sectionHeader h2 {
-        font-size: 1.5rem;
-    }
-
-    .playerHeader h3 {
-        font-size: 1.5rem;
     }
 }
+

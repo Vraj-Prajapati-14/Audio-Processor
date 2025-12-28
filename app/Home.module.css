@@ -5,7 +5,7 @@
 
 .hero {
     text-align: center;
-    padding: 60px 20px;
+    padding: 80px 20px 60px;
     margin-bottom: 60px;
 }
 
@@ -13,10 +13,12 @@
     font-size: 3.5rem;
     font-weight: 800;
     margin-bottom: 24px;
-    background: linear-gradient(135deg, #fff 0%, #cbd5e1 50%, #6366f1 100%);
+    background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
 }
 
 .subtitle {
@@ -24,66 +26,54 @@
     color: var(--text-secondary);
     max-width: 800px;
     margin: 0 auto;
-    line-height: 1.8;
+    line-height: 1.7;
+    font-weight: 400;
 }
 
 .section {
-    margin-top: 80px;
+    margin-top: 60px;
     display: flex;
     flex-direction: column;
-    gap: 40px;
+    gap: 32px;
 }
 
 .sectionTitle {
-    font-size: 2rem;
-    margin-bottom: 32px;
-    text-align: center;
+    font-size: 2.25rem;
+    margin-bottom: 40px;
+    text-align: left;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
 }
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 32px;
-    margin-top: 32px;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
 }
 
 .featureTitle {
     font-size: 1.25rem;
     margin-bottom: 12px;
     color: var(--text-primary);
+    font-weight: 600;
 }
 
 .text {
     color: var(--text-secondary);
-    line-height: 1.8;
-    font-size: 0.95rem;
+    line-height: 1.7;
+    font-size: 0.9375rem;
 }
 
-.faqList {
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
-}
-
-.faqItem {
-    padding-bottom: 32px;
-    border-bottom: 1px solid var(--glass-border);
-}
-
-.faqItem:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-.faqQuestion {
-    font-size: 1.125rem;
-    margin-bottom: 12px;
-    color: var(--text-primary);
-}
 
 @media (max-width: 768px) {
     .hero {
         padding: 40px 20px;
+        margin-bottom: 40px;
+    }
+
+    .hero {
+        padding: 60px 20px 40px;
         margin-bottom: 40px;
     }
 
@@ -96,16 +86,18 @@
     }
 
     .section {
-        margin-top: 60px;
+        margin-top: 40px;
+        gap: 24px;
     }
 
     .grid {
         grid-template-columns: 1fr;
-        gap: 24px;
+        gap: 20px;
     }
 
     .sectionTitle {
         font-size: 1.75rem;
+        margin-bottom: 32px;
     }
 }
 

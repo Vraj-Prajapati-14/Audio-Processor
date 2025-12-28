@@ -23,10 +23,18 @@ export default function AudioProcessor() {
 
     // Supported audio file extensions
     const supportedExtensions = ['.mp3', '.mpeg', '.mpga', '.m4a', '.wav', '.ogg', '.oga', '.flac', '.aac', '.wma', '.opus', '.webm', '.3gp', '.amr', '.aiff', '.au', '.ra'];
-    const fileExtension = selectedFile.name.toLowerCase().substring(selectedFile.name.lastIndexOf('.'));
+    // Supported MIME types
+    const supportedMimeTypes = ['audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/x-mpeg', 'audio/x-mpeg-3', 'video/mpeg', 'video/mp4'];
+    
+    const fileExtension = selectedFile.name.toLowerCase().includes('.') 
+      ? selectedFile.name.toLowerCase().substring(selectedFile.name.lastIndexOf('.'))
+      : '';
     
     // Check if it's an audio file (by type or extension)
-    const isAudioFile = selectedFile.type.startsWith('audio/') || supportedExtensions.includes(fileExtension);
+    const isAudioFile = selectedFile.type.startsWith('audio/') || 
+                        selectedFile.type.startsWith('video/') ||
+                        supportedMimeTypes.includes(selectedFile.type) ||
+                        supportedExtensions.includes(fileExtension);
     
     if (!isAudioFile) {
       alert('Please select a supported audio file. Supported formats: MP3, MPEG, M4A, WAV, OGG, FLAC, AAC, WMA, OPUS, WEBM, and more.');
@@ -125,7 +133,7 @@ export default function AudioProcessor() {
           <input
             type="file"
             id="audio-upload"
-            accept="audio/*,.mp3,.mpeg,.mpga,.m4a,.wav,.ogg,.oga,.flac,.aac,.wma,.opus,.webm,.3gp,.amr,.aiff,.au,.ra"
+            accept="audio/*,video/mpeg,video/mp4,.mp3,.mpeg,.mpga,.m4a,.wav,.ogg,.oga,.flac,.aac,.wma,.opus,.webm,.3gp,.amr,.aiff,.au,.ra"
             onChange={handleFileSelect}
           />
           <label htmlFor="audio-upload" className={styles.uploadLabel}>

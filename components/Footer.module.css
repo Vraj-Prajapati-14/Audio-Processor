@@ -63,9 +63,10 @@
 .linksTitle {
     color: var(--text-primary);
     font-size: 0.875rem;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
 }
 
 .linksList {

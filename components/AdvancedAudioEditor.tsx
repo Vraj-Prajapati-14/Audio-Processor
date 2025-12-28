@@ -14,11 +14,12 @@ import {
 import { allLoFiPresets, LoFiPreset } from '@/lib/lofi-presets';
 import LofiGeneratorTab from './generator/LofiGeneratorTab';
 import TrimTab from './editing/TrimTab';
+import AdvancedMashupTab from './editing/AdvancedMashupTab';
 import Loader from './Loader';
 import styles from './AdvancedAudioEditor.module.css';
 import clsx from 'clsx';
 
-type TabType = 'lofi' | 'effects' | 'trim' | 'eq' | 'merge' | 'tools' | 'generator';
+type TabType = 'lofi' | 'effects' | 'trim' | 'eq' | 'merge' | 'mashup' | 'tools' | 'generator';
 
 export default function AdvancedAudioEditor() {
   const [activeTab, setActiveTab] = useState<TabType>('lofi');
@@ -339,6 +340,7 @@ export default function AdvancedAudioEditor() {
     { id: 'trim' as TabType, label: 'Trim/Crop', icon: Scissors },
     { id: 'eq' as TabType, label: 'EQ', icon: Radio },
     { id: 'merge' as TabType, label: 'Merge', icon: Merge },
+    { id: 'mashup' as TabType, label: 'Mashup', icon: Music },
     { id: 'tools' as TabType, label: 'Tools', icon: BarChart3 },
   ];
 
@@ -368,6 +370,23 @@ export default function AdvancedAudioEditor() {
             Supported: MP3, MPEG, M4A, WAV, OGG, FLAC, AAC, WMA, OPUS, WEBM, 3GP, AMR, AIFF, AU, RA
           </p>
         </div>
+      </div>
+
+      {/* Tabs - Always visible */}
+      <div className={styles.tabs}>
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={clsx(styles.tab, activeTab === tab.id && styles.tabActive)}
+            >
+              <Icon size={18} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {audioBuffer && (
@@ -409,26 +428,33 @@ export default function AdvancedAudioEditor() {
               style={{ cursor: 'pointer' }}
             />
           </div>
+        </>
+      )}
 
-          {/* Tabs */}
-          <div className={styles.tabs}>
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={clsx(styles.tab, activeTab === tab.id && styles.tabActive)}
-                >
-                  <Icon size={18} />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
+      {/* Tab Content */}
+      <div className={clsx('glass-card', styles.tabContent)}>
+        {!audioBuffer && (
+          <div className={styles.noFileMessage}>
+            <h3>Upload an audio file to get started</h3>
+            <p>Choose a feature from the tabs above to see what you can do:</p>
+            <ul className={styles.featureList}>
+              <li><strong>Lo-Fi Presets:</strong> Apply instant Lo-Fi vibes with one click</li>
+              <li><strong>Lo-Fi Generator:</strong> Generate 2-8 hour seamless Lo-Fi tracks</li>
+              <li><strong>Effects:</strong> Apply professional audio effects (reverb, delay, distortion, etc.)</li>
+              <li><strong>Trim/Crop:</strong> Cut and extract specific parts from your audio</li>
+              <li><strong>EQ:</strong> Adjust bass, mid, and treble frequencies</li>
+              <li><strong>Merge:</strong> Combine two audio files with crossfade</li>
+              <li><strong>Mashup:</strong> Create professional mashups with multiple files, tempo control, and DJ effects</li>
+              <li><strong>Tools:</strong> Reverse audio, apply fades, and more</li>
+            </ul>
+            <p className={styles.uploadHint}>
+              👆 Upload your audio file using the button above to start editing!
+            </p>
           </div>
+        )}
 
-          {/* Tab Content */}
-          <div className={clsx('glass-card', styles.tabContent)}>
+        {audioBuffer && (
+          <>
             {activeTab === 'lofi' && (
               <div className={styles.lofiSection}>
                 <h3>Lo-Fi Presets</h3>
@@ -645,6 +671,26 @@ export default function AdvancedAudioEditor() {
                   {isProcessing ? 'Merging...' : 'Merge Audio'}
                 </button>
               </div>
+            )}
+
+            {activeTab === 'mashup' && (
+              <AdvancedMashupTab
+                onGenerateComplete={(url, title) => {
+                  setProcessedAudioUrl(url);
+                  setProcessedAudioTitle(title);
+                  const audio = new Audio(url);
+                  audio.addEventListener('loadedmetadata', () => {
+                    setDuration(audio.duration);
+                  });
+                }}
+                onError={(error) => {
+                  alert(error);
+                }}
+                onProcessingChange={(processing, message) => {
+                  setIsProcessing(processing);
+                  setProcessingMessage(message || 'Processing...');
+                }}
+              />
             )}
 
             {activeTab === 'tools' && (
@@ -1281,10 +1327,11 @@ export default function AdvancedAudioEditor() {
                 </button>
               </div>
             )}
-          </div>
+          </>
+        )}
 
-          {/* Audio Player */}
-          {processedAudioUrl && (
+      {/* Audio Player */}
+      {processedAudioUrl && audioBuffer && (
             <div className={clsx('glass-card', styles.playerSection)}>
               <div className={styles.playerHeader}>
                 <Music size={20} />
@@ -1325,8 +1372,7 @@ export default function AdvancedAudioEditor() {
               </div>
             </div>
           )}
-        </>
-      )}
+      </div>
     </div>
     </>
   );

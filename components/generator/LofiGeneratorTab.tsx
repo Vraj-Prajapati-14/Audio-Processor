@@ -25,6 +25,10 @@ export default function LofiGeneratorTab({
     style: 'chill',
   });
 
+  const [customDuration, setCustomDuration] = useState('');
+  const [useCustomDuration, setUseCustomDuration] = useState(false);
+  const [variationLevel, setVariationLevel] = useState<'low' | 'medium' | 'high' | 'extreme'>('high');
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -37,22 +41,48 @@ export default function LofiGeneratorTab({
     onProcessingChange?.(true, 'Generating Lo-Fi tune...');
 
     try {
-      // Generate the complete Lo-Fi tune
-      const audioBuffer = await generateLofiTuneAudio(settings, (prog: number) => {
-        setProgress(prog);
-        onProcessingChange?.(true, `Generating Lo-Fi tune... ${Math.floor(prog)}%`);
-      });
+      // Calculate final duration
+      let finalDuration = settings.duration;
+      if (useCustomDuration && customDuration) {
+        const custom = parseFloat(customDuration);
+        if (custom > 0 && custom <= 86400) { // Max 24 hours
+          finalDuration = custom;
+        } else {
+          onError('Custom duration must be between 1 second and 86400 seconds (24 hours)');
+          setIsGenerating(false);
+          onProcessingChange?.(false);
+          return;
+        }
+      }
+
+      // Generate the complete Lo-Fi tune with variation
+      const audioBuffer = await generateLofiTuneAudio(
+        { ...settings, duration: finalDuration },
+        variationLevel,
+        (prog: number) => {
+          setProgress(prog);
+          onProcessingChange?.(true, `Generating Lo-Fi tune... ${Math.floor(prog)}%`);
+        }
+      );
 
       // Convert to WAV and create URL
       const wavBlob = audioBufferToWav(audioBuffer);
       const url = URL.createObjectURL(wavBlob);
       
       // Create descriptive title
-      const durationText = settings.duration === 3600 ? '1 Hour' : 
-                          settings.duration === 7200 ? '2 Hours' :
-                          settings.duration === 10800 ? '3 Hours' : '4 Hours';
+      const hours = Math.floor(finalDuration / 3600);
+      const minutes = Math.floor((finalDuration % 3600) / 60);
+      let durationText = '';
+      if (hours > 0) {
+        durationText = `${hours} Hour${hours > 1 ? 's' : ''}`;
+        if (minutes > 0) {
+          durationText += ` ${minutes} Min${minutes > 1 ? 's' : ''}`;
+        }
+      } else {
+        durationText = `${minutes} Minute${minutes > 1 ? 's' : ''}`;
+      }
       const scaleText = settings.scale === 'major' ? 'Major' : 'Minor';
-      const title = `Generated ${durationText} ${settings.style.charAt(0).toUpperCase() + settings.style.slice(1)} ${scaleText} Lo-Fi Music (${settings.key} Key, ${settings.bpm} BPM)`;
+      const title = `Generated ${durationText} ${settings.style.charAt(0).toUpperCase() + settings.style.slice(1)} ${scaleText} Lo-Fi Music (${settings.key} Key, ${settings.bpm} BPM, ${variationLevel} variation)`;
       
       onGenerateComplete(url, title);
       setProgress(100);
@@ -77,16 +107,67 @@ export default function LofiGeneratorTab({
       <div className={styles.generatorSettings}>
         <div className={styles.settingGroup}>
           <label>Duration</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <select
+              value={useCustomDuration ? 'custom' : settings.duration.toString()}
+              onChange={(e) => {
+                if (e.target.value === 'custom') {
+                  setUseCustomDuration(true);
+                } else {
+                  setUseCustomDuration(false);
+                  setSettings({ ...settings, duration: parseInt(e.target.value) });
+                }
+              }}
+              disabled={isGenerating}
+            >
+              <option value={3600}>1 Hour</option>
+              <option value={7200}>2 Hours</option>
+              <option value={10800}>3 Hours</option>
+              <option value={14400}>4 Hours</option>
+              <option value={21600}>6 Hours</option>
+              <option value={28800}>8 Hours</option>
+              <option value="custom">Custom Duration</option>
+            </select>
+            {useCustomDuration && (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  type="number"
+                  placeholder="Duration in seconds"
+                  value={customDuration}
+                  onChange={(e) => setCustomDuration(e.target.value)}
+                  disabled={isGenerating}
+                  style={{
+                    padding: '8px',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '6px',
+                    color: 'var(--text-primary)',
+                    flex: 1,
+                  }}
+                />
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                  {customDuration ? `≈ ${(parseFloat(customDuration) / 3600).toFixed(1)} hours` : ''}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className={styles.settingGroup}>
+          <label>Variation Level</label>
           <select
-            value={settings.duration}
-            onChange={(e) => setSettings({ ...settings, duration: parseInt(e.target.value) })}
+            value={variationLevel}
+            onChange={(e) => setVariationLevel(e.target.value as 'low' | 'medium' | 'high' | 'extreme')}
             disabled={isGenerating}
           >
-            <option value={3600}>1 Hour</option>
-            <option value={7200}>2 Hours</option>
-            <option value={10800}>3 Hours</option>
-            <option value={14400}>4 Hours</option>
+            <option value="low">Low (Minimal Changes)</option>
+            <option value="medium">Medium (Moderate Variation)</option>
+            <option value="high">High (Lots of Variation)</option>
+            <option value="extreme">Extreme (Maximum Variation)</option>
           </select>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+            Higher variation creates more unique patterns throughout the track
+          </p>
         </div>
 
         <div className={styles.settingGroup}>
@@ -174,15 +255,22 @@ export default function LofiGeneratorTab({
       <div className={styles.infoBox}>
         <h4>How it works:</h4>
         <ul>
-          <li>Generates drum patterns with swing and variation</li>
-          <li>Creates jazz-influenced chord progressions</li>
-          <li>Adds melodic elements</li>
+          <li>Generates evolving drum patterns that change over time</li>
+          <li>Creates varied jazz-influenced chord progressions</li>
+          <li>Adds melodic elements with phrase-based evolution</li>
           <li>Applies Lo-Fi processing automatically</li>
-          <li>Creates seamless loop for continuous playback</li>
+          <li>Creates unique patterns throughout the entire duration</li>
+          <li>Higher variation = more unique patterns and changes</li>
         </ul>
-        <p className={styles.note}>
-          <strong>Note:</strong> Generating longer tracks (3-4 hours) may take several minutes. Please keep this tab open during generation.
-        </p>
+        <div className={styles.note}>
+          <p><strong>Note:</strong></p>
+          <ul style={{ marginTop: '8px', paddingLeft: '20px' }}>
+            <li>Custom duration allows any length (up to 24 hours)</li>
+            <li>Higher variation levels create more unique patterns but may take longer to generate</li>
+            <li>Generating longer tracks may take several minutes. Please keep this tab open during generation.</li>
+            <li>The tune evolves throughout - no simple repetition!</li>
+          </ul>
+        </div>
       </div>
     </div>
   );

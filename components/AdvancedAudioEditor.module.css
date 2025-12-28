@@ -6,6 +6,48 @@
     margin: 0 auto;
 }
 
+.noFileMessage {
+    padding: 40px;
+    text-align: center;
+}
+
+.noFileMessage h3 {
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    font-size: 1.5rem;
+}
+
+.noFileMessage > p {
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    font-size: 1rem;
+}
+
+.featureList {
+    text-align: left;
+    max-width: 600px;
+    margin: 0 auto 24px;
+    padding-left: 24px;
+    color: var(--text-secondary);
+}
+
+.featureList li {
+    margin-bottom: 12px;
+    line-height: 1.6;
+}
+
+.featureList strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.uploadHint {
+    color: var(--accent-primary);
+    font-size: 1.125rem;
+    font-weight: 500;
+    margin-top: 24px;
+}
+
 .uploadSection {
     text-align: center;
 }

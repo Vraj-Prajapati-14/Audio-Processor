@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import SessionProvider from '@/components/providers/SessionProvider';
 
 export const metadata: Metadata = {
   title: 'AudioFX Pro - Free Online Audio Effects Processor | Lofi, Reverb, Delay & More',
@@ -45,11 +46,13 @@ export default function RootLayout({
         <link rel="icon" href="/icon.svg" />
       </head>
       <body style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <Header />
-        <main className="container" style={{ flex: 1, padding: '40px 20px' }}>
-          {children}
-        </main>
-        <Footer />
+        <SessionProvider>
+          <Header />
+          <main className="container" style={{ flex: 1, padding: '40px 20px' }}>
+            {children}
+          </main>
+          <Footer />
+        </SessionProvider>
       </body>
     </html>
   );

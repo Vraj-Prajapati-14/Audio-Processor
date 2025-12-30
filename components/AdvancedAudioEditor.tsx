@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { 
   Upload, Download, Play, Pause, Music, Scissors, RotateCcw, 
   Merge, Radio, Sliders, BarChart3, Volume2, RotateCw, Sparkles
@@ -22,6 +24,8 @@ import clsx from 'clsx';
 type TabType = 'lofi' | 'effects' | 'trim' | 'eq' | 'merge' | 'mashup' | 'tools' | 'generator';
 
 export default function AdvancedAudioEditor() {
+  const { data: session } = useSession();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('lofi');
   const [file, setFile] = useState<File | null>(null);
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
@@ -306,14 +310,65 @@ export default function AdvancedAudioEditor() {
 
   const handleDownload = async () => {
     if (!processedAudioUrl || !file) return;
-    
+
+    // Check authentication
+    if (!session) {
+      const shouldSignIn = confirm('You need to sign in to download processed audio. Would you like to sign in now?');
+      if (shouldSignIn) {
+        router.push('/auth/signin?callback=/');
+      }
+      return;
+    }
+
+    // Check subscription and usage limit
     try {
+      const usageResponse = await fetch('/api/usage/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'songs' }),
+      });
+
+      const usageData = await usageResponse.json();
+
+      if (!usageData.allowed) {
+        if (usageData.reason === 'No active subscription') {
+          const shouldUpgrade = confirm('You need an active subscription to download audio. Would you like to view our plans?');
+          if (shouldUpgrade) {
+            router.push('/pricing');
+          }
+        } else {
+          alert(`${usageData.reason}. Please upgrade your plan to continue.`);
+          router.push('/pricing');
+        }
+        return;
+      }
+
+      // Proceed with download
       const response = await fetch(processedAudioUrl);
       const blob = await response.blob();
       const newFileName = file.name.replace(/\.[^/.]+$/, '') + '_processed.wav';
       downloadAudio(blob, newFileName);
+
+      // Record usage after successful download
+      try {
+        await fetch('/api/usage/record', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'download',
+            metadata: {
+              fileName: newFileName,
+              originalFileName: file.name,
+            },
+          }),
+        });
+      } catch (error) {
+        console.error('Failed to record usage:', error);
+        // Don't block the download if usage recording fails
+      }
     } catch (error) {
-      alert('Error downloading audio');
+      console.error('Download error:', error);
+      alert('Error downloading audio. Please try again.');
     }
   };
 

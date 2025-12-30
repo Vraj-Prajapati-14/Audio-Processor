@@ -1,18 +1,21 @@
 'use client';
 
-import { Music, Menu, X } from 'lucide-react';
+import { Music, Menu, X, User, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 import styles from './Header.module.css';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { data: session, status } = useSession();
 
   const navLinks = [
     { href: '/', label: 'Processor' },
     { href: '/guide', label: 'Guide' },
     { href: '/features', label: 'Features' },
     { href: '/examples', label: 'Examples' },
+    { href: '/pricing', label: 'Pricing' },
   ];
 
   return (
@@ -42,6 +45,39 @@ export default function Header() {
               {link.label}
             </Link>
           ))}
+          
+          {status === 'loading' ? null : session ? (
+            <>
+              <Link 
+                href="/subscription" 
+                className={`${styles.navLink} ${styles.subscriptionLink}`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {session.user?.subscription === 'free' ? 'Upgrade' : 'Subscription'}
+              </Link>
+              <div className={styles.userMenu}>
+                <span className={styles.userName}>
+                  <User size={16} />
+                  {session.user?.name || session.user?.email?.split('@')[0]}
+                </span>
+                <button 
+                  onClick={() => signOut({ callbackUrl: '/' })}
+                  className={styles.signOutButton}
+                  title="Sign out"
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            </>
+          ) : (
+            <Link 
+              href="/auth/signin" 
+              className={`${styles.navLink} ${styles.signInLink}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Sign In
+            </Link>
+          )}
         </nav>
       </div>
     </header>

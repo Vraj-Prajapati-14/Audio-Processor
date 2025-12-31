@@ -122,6 +122,19 @@ async function handleRazorpayCheckout(
     );
   }
 
+  // Type guard: ensure plan is 'pro' or 'premium' (not 'free')
+  if (plan !== 'pro' && plan !== 'premium') {
+    return NextResponse.json(
+      { 
+        error: getErrorMessage(ERROR_CODES.INVALID_PLAN),
+        code: ERROR_CODES.INVALID_PLAN,
+        details: 'Only pro and premium plans are available',
+      },
+      { status: 400 }
+    );
+  }
+
+  // Now TypeScript knows plan is 'pro' | 'premium'
   const planConfig = RAZORPAY_PLANS[plan][billingPeriod];
   
   if (!planConfig.planId) {
@@ -226,6 +239,19 @@ async function handleStripeCheckout(
     );
   }
 
+  // Type guard: ensure plan is 'pro' or 'premium' (not 'free')
+  if (plan !== 'pro' && plan !== 'premium') {
+    return NextResponse.json(
+      { 
+        error: getErrorMessage(ERROR_CODES.INVALID_PLAN),
+        code: ERROR_CODES.INVALID_PLAN,
+        details: 'Only pro and premium plans are available',
+      },
+      { status: 400 }
+    );
+  }
+
+  // Now TypeScript knows plan is 'pro' | 'premium'
   const priceConfig = SUBSCRIPTION_PLANS[plan][billingPeriod];
   
   if (!priceConfig.priceId) {

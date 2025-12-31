@@ -1,249 +1,310 @@
+/**
+ * Checkout API Route
+ * Handles subscription checkout with proper error handling and logging
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
 import { isRazorpay } from '@/lib/payment-gateway-config';
-import { TRIAL_DAYS, USAGE_LIMITS } from '@/lib/stripe';
-
-// Razorpay imports
+import { TRIAL_DAYS } from '@/lib/stripe';
 import { razorpay, RAZORPAY_PLANS } from '@/lib/razorpay';
-
-// Stripe imports (kept for future switching)
 import { stripe, SUBSCRIPTION_PLANS } from '@/lib/stripe';
+import { subscriptionService } from '@/lib/services/subscription-service';
+import { 
+  SUBSCRIPTION_PLANS as PLAN_CONSTANTS,
+  BILLING_PERIODS,
+  PAYMENT_GATEWAYS,
+  type SubscriptionPlan,
+  type BillingPeriod,
+} from '@/lib/constants/subscription-status';
+import { ERROR_CODES, getErrorMessage } from '@/lib/constants/error-codes';
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { 
+          error: getErrorMessage(ERROR_CODES.UNAUTHORIZED),
+          code: ERROR_CODES.UNAUTHORIZED,
+        },
         { status: 401 }
       );
     }
 
     const { plan, billingPeriod } = await request.json();
 
+    // Validation
     if (!plan || !billingPeriod) {
       return NextResponse.json(
-        { error: 'Plan and billing period are required' },
+        { 
+          error: getErrorMessage(ERROR_CODES.MISSING_REQUIRED_FIELD),
+          code: ERROR_CODES.MISSING_REQUIRED_FIELD,
+          details: 'Plan and billing period are required',
+        },
         { status: 400 }
       );
     }
 
-    if (!['pro', 'premium'].includes(plan)) {
+    if (!Object.values(PLAN_CONSTANTS).includes(plan as SubscriptionPlan) || plan === PLAN_CONSTANTS.FREE) {
       return NextResponse.json(
-        { error: 'Invalid plan' },
+        { 
+          error: getErrorMessage(ERROR_CODES.INVALID_PLAN),
+          code: ERROR_CODES.INVALID_PLAN,
+        },
         { status: 400 }
       );
     }
 
-    if (!['monthly', 'quarterly', 'yearly'].includes(billingPeriod)) {
+    if (!Object.values(BILLING_PERIODS).includes(billingPeriod as BillingPeriod)) {
       return NextResponse.json(
-        { error: 'Invalid billing period' },
+        { 
+          error: getErrorMessage(ERROR_CODES.INVALID_BILLING_PERIOD),
+          code: ERROR_CODES.INVALID_BILLING_PERIOD,
+        },
         { status: 400 }
       );
     }
 
     // Use Razorpay by default, fallback to Stripe if configured
     if (isRazorpay) {
-      return await handleRazorpayCheckout(session.user.id, session.user.email, session.user.name, plan, billingPeriod, request);
+      return await handleRazorpayCheckout(
+        session.user.id,
+        session.user.email,
+        session.user.name,
+        plan as SubscriptionPlan,
+        billingPeriod as BillingPeriod,
+        request
+      );
     } else {
-      return await handleStripeCheckout(session.user.id, session.user.email, session.user.name, plan, billingPeriod, request);
+      return await handleStripeCheckout(
+        session.user.id,
+        session.user.email,
+        session.user.name,
+        plan as SubscriptionPlan,
+        billingPeriod as BillingPeriod,
+        request
+      );
     }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to create checkout session';
-    console.error('Checkout error:', errorMessage);
+    console.error('[Checkout API] Error:', errorMessage);
     return NextResponse.json(
-      { error: errorMessage },
+      { 
+        error: getErrorMessage(ERROR_CODES.INTERNAL_ERROR),
+        code: ERROR_CODES.INTERNAL_ERROR,
+        details: errorMessage,
+      },
       { status: 500 }
     );
   }
 }
 
-// Razorpay checkout handler
+/**
+ * Razorpay checkout handler
+ */
 async function handleRazorpayCheckout(
   userId: string,
   email: string | null | undefined,
   name: string | null | undefined,
-  plan: string,
-  billingPeriod: string,
+  plan: SubscriptionPlan,
+  billingPeriod: BillingPeriod,
   request: NextRequest
 ) {
   if (!razorpay) {
     return NextResponse.json(
-      { error: 'Razorpay is not configured' },
+      { 
+        error: getErrorMessage(ERROR_CODES.PAYMENT_GATEWAY_NOT_CONFIGURED),
+        code: ERROR_CODES.PAYMENT_GATEWAY_NOT_CONFIGURED,
+      },
       { status: 500 }
     );
   }
 
-  const planConfig = RAZORPAY_PLANS[plan as 'pro' | 'premium'][billingPeriod as 'monthly' | 'quarterly' | 'yearly'];
+  const planConfig = RAZORPAY_PLANS[plan][billingPeriod];
   
   if (!planConfig.planId) {
     return NextResponse.json(
-      { error: 'Razorpay plan ID not configured' },
+      { 
+        error: getErrorMessage(ERROR_CODES.PLAN_NOT_CONFIGURED),
+        code: ERROR_CODES.PLAN_NOT_CONFIGURED,
+        details: `Plan ID not configured for ${plan} ${billingPeriod}`,
+      },
       { status: 500 }
     );
   }
 
-  // Get or create Razorpay customer
-  let customerId: string;
-  const existingSubscription = await prisma.subscription.findUnique({
-    where: { userId },
-  });
+  try {
+    // Get or create subscription
+    const existingSubscription = await subscriptionService.getSubscriptionByUserId(userId);
+    
+    let customerId: string;
+    
+    if (existingSubscription?.razorpayCustomerId) {
+      customerId = existingSubscription.razorpayCustomerId;
+    } else {
+      // Create Razorpay customer
+      const customer = await subscriptionService.createRazorpayCustomer(userId, email, name);
+      customerId = customer.id;
 
-  if (existingSubscription?.razorpayCustomerId) {
-    customerId = existingSubscription.razorpayCustomerId;
-  } else {
-    // Create Razorpay customer
-    const customer = await razorpay.customers.create({
-      name: name || undefined,
-      email: email || undefined,
-      notes: {
-        userId: userId,
-      },
-    });
-    customerId = customer.id;
-
-    // Create or update subscription record
-    await prisma.subscription.upsert({
-      where: { userId },
-      create: {
-        userId: userId,
+      // Create subscription record
+      await subscriptionService.upsertSubscription({
+        userId,
+        plan,
+        billingPeriod,
+        paymentGateway: PAYMENT_GATEWAYS.RAZORPAY,
         razorpayCustomerId: customerId,
-        paymentGateway: 'razorpay',
-        plan: plan,
         status: 'trialing',
         trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
-      },
-      update: {
-        razorpayCustomerId: customerId,
-        paymentGateway: 'razorpay',
-      },
-    });
-  }
+      });
+    }
 
-  // Create Razorpay subscription
-  const subscription = await razorpay.subscriptions.create({
-    plan_id: planConfig.planId,
-    customer_notify: 1,
-    total_count: 9999, // For recurring subscriptions
-    start_at: Math.floor((Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000) / 1000), // Start after trial
-    notes: {
-      userId: userId,
-      plan: plan,
-      billingPeriod: billingPeriod,
-    },
-  });
+    // Create Razorpay subscription
+    const razorpaySubscription = await subscriptionService.createRazorpaySubscription(
+      customerId,
+      planConfig.planId,
+      userId,
+      plan,
+      billingPeriod
+    );
 
-  // Update subscription record with Razorpay subscription ID
-  await prisma.subscription.update({
-    where: { userId },
-    data: {
-      razorpaySubscriptionId: subscription.id,
+    // Update subscription record with Razorpay subscription ID
+    await subscriptionService.upsertSubscription({
+      userId,
+      plan,
+      billingPeriod,
+      paymentGateway: PAYMENT_GATEWAYS.RAZORPAY,
+      razorpayCustomerId: customerId,
+      razorpaySubscriptionId: razorpaySubscription.id,
       razorpayPlanId: planConfig.planId,
-      plan: plan,
       status: 'trialing',
       trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
-    },
-  });
+    });
 
-  // Return checkout details (Razorpay handles payment via frontend)
-  return NextResponse.json({
-    subscriptionId: subscription.id,
-    amount: planConfig.amount,
-    currency: 'INR',
-    customerId: customerId,
-    planId: planConfig.planId,
-    redirectUrl: `${request.nextUrl.origin}/subscription/razorpay-checkout?subscription_id=${subscription.id}`,
-  });
+    // Return checkout details (Razorpay handles payment via frontend)
+    return NextResponse.json({
+      subscriptionId: razorpaySubscription.id,
+      amount: planConfig.amount,
+      currency: 'INR',
+      customerId: customerId,
+      planId: planConfig.planId,
+      redirectUrl: `${request.nextUrl.origin}/subscription/razorpay-checkout?subscription_id=${razorpaySubscription.id}`,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Checkout API] Razorpay checkout error:', errorMessage);
+    return NextResponse.json(
+      { 
+        error: getErrorMessage(ERROR_CODES.PAYMENT_GATEWAY_ERROR),
+        code: ERROR_CODES.PAYMENT_GATEWAY_ERROR,
+        details: errorMessage,
+      },
+      { status: 500 }
+    );
+  }
 }
 
-// Stripe checkout handler (kept for future switching)
+/**
+ * Stripe checkout handler (kept for future switching)
+ */
 async function handleStripeCheckout(
   userId: string,
   email: string | null | undefined,
   name: string | null | undefined,
-  plan: string,
-  billingPeriod: string,
+  plan: SubscriptionPlan,
+  billingPeriod: BillingPeriod,
   request: NextRequest
 ) {
   if (!stripe) {
     return NextResponse.json(
-      { error: 'Stripe is not configured' },
+      { 
+        error: getErrorMessage(ERROR_CODES.PAYMENT_GATEWAY_NOT_CONFIGURED),
+        code: ERROR_CODES.PAYMENT_GATEWAY_NOT_CONFIGURED,
+      },
       { status: 500 }
     );
   }
 
-  const priceConfig = SUBSCRIPTION_PLANS[plan as 'pro' | 'premium'][billingPeriod as 'monthly' | 'quarterly' | 'yearly'];
+  const priceConfig = SUBSCRIPTION_PLANS[plan][billingPeriod];
   
   if (!priceConfig.priceId) {
     return NextResponse.json(
-      { error: 'Price ID not configured' },
+      { 
+        error: getErrorMessage(ERROR_CODES.PLAN_NOT_CONFIGURED),
+        code: ERROR_CODES.PLAN_NOT_CONFIGURED,
+      },
       { status: 500 }
     );
   }
 
-  // Get or create Stripe customer
-  let customerId: string;
-  const existingSubscription = await prisma.subscription.findUnique({
-    where: { userId },
-  });
+  try {
+    // Get or create Stripe customer
+    const existingSubscription = await subscriptionService.getSubscriptionByUserId(userId);
+    
+    let customerId: string;
+    
+    if (existingSubscription?.stripeCustomerId) {
+      customerId = existingSubscription.stripeCustomerId;
+    } else {
+      const customer = await stripe.customers.create({
+        email: email || undefined,
+        name: name || undefined,
+        metadata: {
+          userId: userId,
+        },
+      });
+      customerId = customer.id;
 
-  if (existingSubscription?.stripeCustomerId) {
-    customerId = existingSubscription.stripeCustomerId;
-  } else {
-    const customer = await stripe.customers.create({
-      email: email || undefined,
-      name: name || undefined,
-      metadata: {
-        userId: userId,
-      },
-    });
-    customerId = customer.id;
-
-    await prisma.subscription.upsert({
-      where: { userId },
-      create: {
-        userId: userId,
+      await subscriptionService.upsertSubscription({
+        userId,
+        plan,
+        billingPeriod,
+        paymentGateway: PAYMENT_GATEWAYS.STRIPE,
         stripeCustomerId: customerId,
-        paymentGateway: 'stripe',
-        plan: plan,
         status: 'trialing',
         trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
-      },
-      update: {
-        stripeCustomerId: customerId,
-        paymentGateway: 'stripe',
-      },
-    });
-  }
+      });
+    }
 
-  // Create checkout session with trial
-  const checkoutSession = await stripe.checkout.sessions.create({
-    customer: customerId,
-    payment_method_types: ['card'],
-    line_items: [
-      {
-        price: priceConfig.priceId,
-        quantity: 1,
+    // Create checkout session with trial
+    const checkoutSession = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceConfig.priceId,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      subscription_data: {
+        trial_period_days: TRIAL_DAYS,
+        metadata: {
+          userId: userId,
+          plan: plan,
+        },
       },
-    ],
-    mode: 'subscription',
-    subscription_data: {
-      trial_period_days: TRIAL_DAYS,
+      success_url: `${request.nextUrl.origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${request.nextUrl.origin}/pricing`,
       metadata: {
         userId: userId,
         plan: plan,
+        billingPeriod: billingPeriod,
       },
-    },
-    success_url: `${request.nextUrl.origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${request.nextUrl.origin}/pricing`,
-    metadata: {
-      userId: userId,
-      plan: plan,
-      billingPeriod: billingPeriod,
-    },
-  });
+    });
 
-  return NextResponse.json({ url: checkoutSession.url });
+    return NextResponse.json({ url: checkoutSession.url });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[Checkout API] Stripe checkout error:', errorMessage);
+    return NextResponse.json(
+      { 
+        error: getErrorMessage(ERROR_CODES.PAYMENT_GATEWAY_ERROR),
+        code: ERROR_CODES.PAYMENT_GATEWAY_ERROR,
+        details: errorMessage,
+      },
+      { status: 500 }
+    );
+  }
 }

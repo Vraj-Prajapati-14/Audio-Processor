@@ -1,109 +1,202 @@
 import nodemailer from 'nodemailer';
+import {
+  getWelcomeEmailTemplate,
+  getPasswordResetEmailTemplate,
+  getPasswordResetSuccessEmailTemplate,
+} from './email-templates';
 
-// Create reusable transporter
+/**
+ * Email Service
+ * 
+ * This file handles email sending using nodemailer.
+ * All email templates are defined in email-templates.ts
+ */
+
+// Create reusable transporter with lazy initialization
+let transporter: nodemailer.Transporter | null = null;
+
 const getTransporter = () => {
+  // Always recreate transporter to ensure env vars are fresh
   if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
     // For development, create a test account transporter
     // In production, SMTP credentials are required
     if (process.env.NODE_ENV === 'development') {
-      console.warn('⚠️  SMTP credentials not found. Using test account transporter.');
-      console.warn('⚠️  Password reset emails will not be sent in development without SMTP configuration.');
+      console.warn('⚠️  SMTP credentials not found. Email sending disabled.');
+      console.warn('⚠️  SMTP_USER:', process.env.SMTP_USER ? '✓ Set' : '✗ Not set');
+      console.warn('⚠️  SMTP_PASSWORD:', process.env.SMTP_PASSWORD ? '✓ Set' : '✗ Not set');
+      console.warn('⚠️  Emails will be logged to console in development mode.');
     }
     return null;
   }
 
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
-    },
-  });
+  try {
+    const config = {
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD,
+      },
+    };
+
+    console.log('📧 Creating SMTP transporter with config:', {
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      user: config.auth.user,
+      passwordSet: !!config.auth.pass,
+    });
+
+    return nodemailer.createTransport(config);
+  } catch (error) {
+    console.error('❌ Failed to create SMTP transporter:', error);
+    return null;
+  }
 };
 
-const transporter = getTransporter();
-
-export async function sendPasswordResetEmail(email: string, resetToken: string) {
+/**
+ * Generic email sending function
+ */
+async function sendEmail(to: string, subject: string, html: string, text: string) {
+  console.log('📧 sendEmail function called');
+  
+  // Get fresh transporter each time
+  transporter = getTransporter();
+  
+  console.log('📧 Transporter status:', {
+    isNull: transporter === null,
+    transporterType: transporter ? 'created' : 'null',
+  });
+  
   if (!transporter) {
-    // In development, log the reset link instead of sending email
+    // In development, log the email instead of sending
+    console.warn('⚠️  Transporter is null - checking environment...');
+    console.warn('⚠️  SMTP_USER:', process.env.SMTP_USER ? `Set (${process.env.SMTP_USER.substring(0, 3)}...)` : 'NOT SET');
+    console.warn('⚠️  SMTP_PASSWORD:', process.env.SMTP_PASSWORD ? 'Set (hidden)' : 'NOT SET');
+    
     if (process.env.NODE_ENV === 'development') {
-      const resetUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/reset-password?token=${resetToken}`;
-      console.log('\n📧 [DEV MODE] Password Reset Email would be sent to:', email);
-      console.log('🔗 Reset Link:', resetUrl);
-      console.log('⚠️  To actually send emails, configure SMTP settings in .env.local\n');
+      console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📧 [DEV MODE - NO SMTP] Email would be sent:');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`To: ${to}`);
+      console.log(`Subject: ${subject}`);
+      
+      // Extract reset URL from text version
+      const resetUrlMatch = text.match(/https?:\/\/[^\s]+/);
+      if (resetUrlMatch) {
+        console.log(`\n🔗 Reset Link: ${resetUrlMatch[0]}`);
+      }
+      
+      console.log(`\nText Version:\n${text}`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('⚠️  To actually send emails, configure SMTP settings in .env.local');
+      console.log('⚠️  Required: SMTP_USER, SMTP_PASSWORD, SMTP_HOST, SMTP_PORT');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
       return { success: true, messageId: 'dev-mode' };
     }
     throw new Error('Email service not configured. Please set SMTP_USER and SMTP_PASSWORD environment variables.');
   }
 
-  const resetUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/auth/reset-password?token=${resetToken}`;
-
   const mailOptions = {
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to: email,
-    subject: 'Reset Your AudioFX Pro Password',
-    html: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Reset Your Password</title>
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">AudioFX Pro</h1>
-          </div>
-          <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0; border-top: none;">
-            <h2 style="color: #333; margin-top: 0;">Reset Your Password</h2>
-            <p>You requested to reset your password for your AudioFX Pro account.</p>
-            <p>Click the button below to reset your password. This link will expire in <strong>5 minutes</strong>.</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${resetUrl}" 
-                 style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                Reset Password
-              </a>
-            </div>
-            <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>
-            <p style="color: #667eea; word-break: break-all; font-size: 12px; background: #f0f0f0; padding: 10px; border-radius: 5px;">${resetUrl}</p>
-            <p style="color: #999; font-size: 12px; margin-top: 30px; border-top: 1px solid #e0e0e0; padding-top: 20px;">
-              If you didn't request this password reset, please ignore this email. Your password will not be changed.
-            </p>
-            <p style="color: #999; font-size: 12px; margin-top: 10px;">
-              This link expires in 5 minutes for security reasons.
-            </p>
-          </div>
-        </body>
-      </html>
-    `,
-    text: `
-      Reset Your AudioFX Pro Password
-
-      You requested to reset your password for your AudioFX Pro account.
-
-      Click the link below to reset your password. This link will expire in 5 minutes:
-
-      ${resetUrl}
-
-      If you didn't request this password reset, please ignore this email. Your password will not be changed.
-
-      This link expires in 5 minutes for security reasons.
-    `,
+    to,
+    subject,
+    html,
+    text,
   };
 
   try {
+    console.log('📧 Attempting to send email...', { to, subject, from: mailOptions.from });
     const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Email sent successfully!', { messageId: info.messageId, response: info.response });
     return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error('Email sending error:', error);
-    throw new Error('Failed to send email');
+  } catch (error: any) {
+    console.error('❌ Email sending error:', error);
+    console.error('Error details:', {
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode,
+      message: error.message,
+    });
+    
+    // Provide more specific error messages
+    if (error.code === 'EAUTH') {
+      throw new Error('SMTP authentication failed. Please check your SMTP_USER and SMTP_PASSWORD. For Gmail, you may need to use an App Password instead of your regular password.');
+    } else if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT') {
+      throw new Error(`Could not connect to SMTP server. Please check SMTP_HOST and SMTP_PORT. Error: ${error.message}`);
+    } else if (error.response) {
+      throw new Error(`SMTP server error: ${error.response} (Code: ${error.responseCode})`);
+    }
+    
+    throw new Error(`Failed to send email: ${error.message || 'Unknown error'}`);
   }
 }
 
+/**
+ * Send welcome email to new users
+ */
+export async function sendWelcomeEmail(email: string, name?: string | null) {
+  try {
+    const template = getWelcomeEmailTemplate({ email, name });
+    return await sendEmail(email, template.subject, template.html, template.text);
+  } catch (error) {
+    console.error('Failed to send welcome email:', error);
+    // Don't throw - welcome email failure shouldn't block signup
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+/**
+ * Send password reset email
+ */
+export async function sendPasswordResetEmail(email: string, resetToken: string) {
+  console.log('📧 sendPasswordResetEmail called:', { email, hasToken: !!resetToken });
+  console.log('📧 Environment check:', {
+    hasSMTP_USER: !!process.env.SMTP_USER,
+    hasSMTP_PASSWORD: !!process.env.SMTP_PASSWORD,
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    NODE_ENV: process.env.NODE_ENV,
+  });
+  
+  try {
+    const template = getPasswordResetEmailTemplate({ email, resetToken });
+    console.log('📧 Template generated, attempting to send email...');
+    const result = await sendEmail(email, template.subject, template.html, template.text);
+    console.log('📧 Email sending result:', result);
+    return result;
+  } catch (error: any) {
+    console.error('❌ Failed to send password reset email:', error);
+    console.error('❌ Error stack:', error?.stack);
+    throw error; // This should fail - password reset requires email
+  }
+}
+
+/**
+ * Send password reset success confirmation email
+ */
+export async function sendPasswordResetSuccessEmail(email: string) {
+  try {
+    const template = getPasswordResetSuccessEmailTemplate({ email });
+    return await sendEmail(email, template.subject, template.html, template.text);
+  } catch (error) {
+    console.error('Failed to send password reset success email:', error);
+    // Don't throw - success email failure shouldn't block password reset
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+/**
+ * Verify email transport connection
+ */
 export async function verifyEmailTransport() {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
+    return false;
+  }
+
+  if (!transporter) {
     return false;
   }
 
@@ -115,4 +208,3 @@ export async function verifyEmailTransport() {
     return false;
   }
 }
-

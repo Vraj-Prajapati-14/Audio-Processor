@@ -50,10 +50,12 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  subscription  Subscription?
-  usageRecords  UsageRecord[]
+  accounts     Account[]
+  sessions     Session[]
+  subscription Subscription?
+  usageRecords UsageRecord[]
+  charges      Charge[]
+  apiLogs      ApiLog[]
 }
 
 model VerificationToken {
@@ -65,43 +67,161 @@ model VerificationToken {
 }
 
 model Subscription {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                       String    @id @default(cuid())
+  userId                   String    @unique
+  user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Stripe fields (kept for future switching)
-  stripeCustomerId      String?  @unique
-  stripeSubscriptionId  String?  @unique
-  stripePriceId         String?
-  stripeCurrentPeriodEnd DateTime?
+  stripeCustomerId         String?   @unique
+  stripeSubscriptionId     String?   @unique
+  stripePriceId            String?
+  stripeCurrentPeriodEnd   DateTime?
   // Razorpay fields
-  razorpayCustomerId    String?  @unique
-  razorpaySubscriptionId String? @unique
-  razorpayPlanId        String?
+  razorpayCustomerId       String?   @unique
+  razorpaySubscriptionId   String?   @unique
+  razorpayPlanId           String?
   razorpayCurrentPeriodEnd DateTime?
   // Payment gateway used
-  paymentGateway        String   @default("razorpay") // "razorpay" or "stripe"
-  plan                  String   @default("free") // free, pro, premium
-  status                String   @default("active") // active, canceled, past_due, trialing
-  trialEndsAt           DateTime?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  paymentGateway           String    @default("razorpay") // "razorpay" or "stripe"
+  plan                     String    @default("free") // free, pro, premium
+  billingPeriod            String? // monthly, quarterly, yearly
+  status                   String    @default("active") // active, canceled, past_due, trialing, paused, expired
+  trialEndsAt              DateTime?
+  canceledAt               DateTime?
+  cancelAtPeriodEnd        Boolean   @default(false)
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  // Relations
+  charges  Charge[]
+  webhooks Webhook[]
+  apiLogs  ApiLog[]
 
   @@index([userId])
   @@index([stripeCustomerId])
   @@index([stripeSubscriptionId])
   @@index([razorpayCustomerId])
   @@index([razorpaySubscriptionId])
+  @@index([status])
+  @@index([paymentGateway])
+  @@index([plan])
+}
+
+model Charge {
+  id                    String       @id @default(cuid())
+  subscriptionId        String
+  subscription          Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  userId                String
+  // Payment gateway identifiers
+  razorpayPaymentId     String?      @unique
+  razorpayOrderId       String?
+  stripePaymentIntentId String?      @unique
+  stripeChargeId        String?      @unique
+  // Payment details
+  amount                Int // Amount in smallest currency unit (paise for INR, cents for USD)
+  currency              String       @default("INR")
+  status                String // succeeded, pending, failed, refunded, partially_refunded
+  paymentMethod         String? // card, netbanking, upi, wallet, etc.
+  description           String?      @db.Text
+  failureCode           String? // Error code if payment failed
+  failureMessage        String?      @db.Text
+  // Metadata
+  metadata              String?      @db.Text // JSON string for additional data
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  User                  User         @relation(fields: [userId], references: [id])
+  apiLogs               ApiLog[]
+
+  @@index([subscriptionId])
+  @@index([userId])
+  @@index([razorpayPaymentId])
+  @@index([razorpayOrderId])
+  @@index([stripePaymentIntentId])
+  @@index([stripeChargeId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Webhook {
+  id              String        @id @default(cuid())
+  subscriptionId  String?
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  // Webhook details
+  eventType       String // subscription.activated, payment.failed, etc.
+  eventId         String?       @unique // Razorpay event ID or Stripe event ID
+  paymentGateway  String // razorpay or stripe
+  // Webhook payload
+  payload         String        @db.Text // Full webhook payload as JSON
+  signature       String? // Webhook signature for verification
+  // Status
+  processed       Boolean       @default(false)
+  processingError String?       @db.Text
+  retryCount      Int           @default(0)
+  // Relations
+  logs            WebhookLog[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([subscriptionId])
+  @@index([eventType])
+  @@index([eventId])
+  @@index([paymentGateway])
+  @@index([processed])
+  @@index([createdAt])
+}
+
+model WebhookLog {
+  id        String   @id @default(cuid())
+  webhookId String
+  webhook   Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  // Log details
+  level     String // info, warning, error, debug
+  message   String   @db.Text
+  data      String?  @db.Text // JSON string for additional context
+  error     String?  @db.Text // Error stack trace if applicable
+  createdAt DateTime @default(now())
+
+  @@index([webhookId])
+  @@index([level])
+  @@index([createdAt])
 }
 
 model UsageRecord {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action      String   // "download", "process", etc.
-  createdAt   DateTime @default(now())
-  metadata    String?  @db.Text // JSON string for additional data
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String // "download", "process", etc.
+  createdAt DateTime @default(now())
+  metadata  String?  @db.Text // JSON string for additional data
 
   @@index([userId])
   @@index([userId, createdAt])
 }
 
+model ApiLog {
+  id              String   @id @default(cuid())
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  chargeId       String?
+  charge         Charge?  @relation(fields: [chargeId], references: [id], onDelete: SetNull)
+  // API call details
+  paymentGateway String // razorpay or stripe
+  endpoint       String // e.g., "/subscriptions", "/customers", "/payments"
+  method         String // GET, POST, PUT, DELETE
+  // Request/Response
+  requestPayload String?  @db.Text // JSON string of request
+  responsePayload String? @db.Text // JSON string of response
+  statusCode     Int? // HTTP status code
+  success        Boolean  @default(true)
+  error          String?  @db.Text // Error message if failed
+  duration       Int? // Duration in milliseconds
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([subscriptionId])
+  @@index([chargeId])
+  @@index([paymentGateway])
+  @@index([success])
+  @@index([createdAt])
+}

@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from './prisma';
 import bcrypt from 'bcryptjs';
+import { sendWelcomeEmail } from './email';
 
 // #region agent log
 try {
@@ -90,13 +91,122 @@ export const authOptions: NextAuthOptions = {
   ],
   pages: {
     signIn: '/auth/signin',
-    signUp: '/auth/signup',
   },
   session: {
     strategy: 'jwt',
+    maxAge: 7 * 24 * 60 * 60, // 7 days (in seconds)
+    updateAge: 24 * 60 * 60, // 24 hours - update session if older than this
   },
   callbacks: {
+    async signIn({ user, account }) {
+      // Handle Google OAuth sign in
+      if (account?.provider === 'google' && user.email) {
+        try {
+          // Check if user already exists
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email },
+          });
+
+          if (!existingUser) {
+            // Create new user from Google OAuth
+            console.log('📝 Creating new user from Google OAuth:', user.email);
+            
+            const newUser = await prisma.user.create({
+              data: {
+                email: user.email,
+                name: user.name || null,
+                image: user.image || null,
+                emailVerified: new Date(), // Google emails are pre-verified
+                // No password for OAuth users
+              },
+            });
+
+            // Create account link
+            if (account) {
+              await prisma.account.create({
+                data: {
+                  userId: newUser.id,
+                  type: account.type,
+                  provider: account.provider,
+                  providerAccountId: account.providerAccountId,
+                  access_token: account.access_token || null,
+                  refresh_token: account.refresh_token || null,
+                  expires_at: account.expires_at || null,
+                  token_type: account.token_type || null,
+                  scope: account.scope || null,
+                  id_token: account.id_token || null,
+                  session_state: account.session_state || null,
+                },
+              });
+            }
+
+            // Send welcome email (non-blocking)
+            try {
+              console.log('📧 Sending welcome email to new Google OAuth user:', user.email);
+              await sendWelcomeEmail(user.email, user.name || null);
+            } catch (emailError) {
+              console.error('❌ Failed to send welcome email to Google OAuth user:', emailError);
+              // Don't fail sign-in if email fails
+            }
+
+            // Update user object with new ID for JWT
+            user.id = newUser.id;
+          } else {
+            // User exists, update their Google account link if needed
+            if (account) {
+              const existingAccount = await prisma.account.findUnique({
+                where: {
+                  provider_providerAccountId: {
+                    provider: account.provider,
+                    providerAccountId: account.providerAccountId,
+                  },
+                },
+              });
+
+              if (!existingAccount) {
+                // Link Google account to existing user
+                await prisma.account.create({
+                  data: {
+                    userId: existingUser.id,
+                    type: account.type,
+                    provider: account.provider,
+                    providerAccountId: account.providerAccountId,
+                    access_token: account.access_token || null,
+                    refresh_token: account.refresh_token || null,
+                    expires_at: account.expires_at || null,
+                    token_type: account.token_type || null,
+                    scope: account.scope || null,
+                    id_token: account.id_token || null,
+                    session_state: account.session_state || null,
+                  },
+                });
+              }
+
+              // Update user info if needed
+              await prisma.user.update({
+                where: { id: existingUser.id },
+                data: {
+                  name: user.name || existingUser.name,
+                  image: user.image || existingUser.image,
+                  emailVerified: existingUser.emailVerified || new Date(),
+                },
+              });
+            }
+
+            // Update user object with existing ID for JWT
+            user.id = existingUser.id;
+          }
+        } catch (error) {
+          console.error('❌ Error handling Google OAuth sign in:', error);
+          // Allow sign in to proceed even if database operations fail
+          // This prevents blocking legitimate users
+        }
+      }
+
+      return true; // Allow sign in
+    },
     async jwt({ token, user }: { token: any; user?: any }) {
+      // Initial sign in - user object is available
       if (user) {
         token.id = user.id;
         // Fetch subscription status - handle potential database errors gracefully

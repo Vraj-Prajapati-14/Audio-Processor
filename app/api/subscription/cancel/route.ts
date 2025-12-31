@@ -1,112 +1,56 @@
+/**
+ * Cancel Subscription API Route
+ * Handles subscription cancellation with proper error handling
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { isRazorpay } from '@/lib/payment-gateway-config';
+import { subscriptionService } from '@/lib/services/subscription-service';
+import { ERROR_CODES, getErrorMessage } from '@/lib/constants/error-codes';
 
-// Razorpay imports
-import { razorpay } from '@/lib/razorpay';
-
-// Stripe imports (kept for future switching)
-import { stripe } from '@/lib/stripe';
-
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { 
+          error: getErrorMessage(ERROR_CODES.UNAUTHORIZED),
+          code: ERROR_CODES.UNAUTHORIZED,
+        },
         { status: 401 }
       );
     }
 
-    const subscription = await prisma.subscription.findUnique({
-      where: { userId: session.user.id },
+    const { cancelAtPeriodEnd } = await request.json().catch(() => ({}));
+
+    const result = await subscriptionService.cancelSubscription(
+      session.user.id,
+      cancelAtPeriodEnd === true
+    );
+
+    return NextResponse.json({ 
+      success: true,
+      message: cancelAtPeriodEnd 
+        ? 'Subscription will be canceled at the end of the current period'
+        : 'Subscription canceled successfully',
     });
-
-    if (!subscription) {
-      return NextResponse.json(
-        { error: 'No subscription found' },
-        { status: 404 }
-      );
-    }
-
-    // Determine which gateway was used
-    const paymentGateway = subscription.paymentGateway || (isRazorpay ? 'razorpay' : 'stripe');
-
-    if (paymentGateway === 'razorpay') {
-      return await handleRazorpayCancel(subscription);
-    } else {
-      return await handleStripeCancel(subscription);
-    }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to cancel subscription';
-    console.error('Cancel subscription error:', errorMessage);
+    console.error('[Cancel Subscription API] Error:', errorMessage);
+    
+    // Check if it's a known error code
+    const errorCode = error instanceof Error && error.message.includes('SUBSCRIPTION')
+      ? ERROR_CODES.SUBSCRIPTION_NOT_FOUND
+      : ERROR_CODES.INTERNAL_ERROR;
+
     return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
-  }
-}
-
-// Razorpay cancel handler
-async function handleRazorpayCancel(subscription: any) {
-  if (!razorpay) {
-    return NextResponse.json(
-      { error: 'Razorpay is not configured' },
-      { status: 500 }
-    );
-  }
-
-  if (!subscription.razorpaySubscriptionId) {
-    return NextResponse.json(
-      { error: 'No active Razorpay subscription found' },
-      { status: 404 }
-    );
-  }
-
-  try {
-    // Cancel Razorpay subscription immediately
-    await razorpay.subscriptions.cancel(subscription.razorpaySubscriptionId);
-
-    // Update database
-    await prisma.subscription.update({
-      where: { id: subscription.id },
-      data: {
-        status: 'canceled',
+      { 
+        error: getErrorMessage(errorCode),
+        code: errorCode,
+        details: errorMessage,
       },
-    });
-
-    return NextResponse.json({ message: 'Subscription canceled successfully' });
-  } catch (error: any) {
-    console.error('Razorpay cancel error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to cancel Razorpay subscription' },
       { status: 500 }
     );
   }
-}
-
-// Stripe cancel handler (kept for future switching)
-async function handleStripeCancel(subscription: any) {
-  if (!stripe) {
-    return NextResponse.json(
-      { error: 'Stripe is not configured' },
-      { status: 500 }
-    );
-  }
-
-  if (!subscription.stripeSubscriptionId) {
-    return NextResponse.json(
-      { error: 'No active Stripe subscription found' },
-      { status: 404 }
-    );
-  }
-
-  // Cancel subscription at period end
-  await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
-    cancel_at_period_end: true,
-  });
-
-  return NextResponse.json({ message: 'Subscription will be canceled at period end' });
 }

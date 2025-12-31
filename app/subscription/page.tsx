@@ -44,10 +44,20 @@ export default function SubscriptionPage() {
   const fetchSubscriptionStatus = async () => {
     try {
       const response = await fetch('/api/subscription/status');
+      if (!response.ok) {
+        throw new Error('Failed to fetch subscription status');
+      }
       const data = await response.json();
-      setSubscription(data);
+      // Ensure we have a valid subscription object with plan
+      if (data && data.plan) {
+        setSubscription(data);
+      } else {
+        // If no plan, treat as no subscription
+        setSubscription(null);
+      }
     } catch (error) {
       console.error('Failed to fetch subscription status:', error);
+      setSubscription(null);
     } finally {
       setLoading(false);
     }
@@ -102,7 +112,7 @@ export default function SubscriptionPage() {
     );
   }
 
-  if (!subscription) {
+  if (!subscription || !subscription.plan) {
     return (
       <div className={styles.container}>
         <div className={styles.card}>
@@ -118,7 +128,9 @@ export default function SubscriptionPage() {
 
   const isActive = subscription.isActive;
   const isTrial = subscription.isTrialing;
-  const planName = subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1);
+  const planName = subscription.plan 
+    ? subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)
+    : 'Free';
 
   return (
     <div className={styles.container}>

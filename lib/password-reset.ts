@@ -1,6 +1,6 @@
 import { prisma } from './prisma';
 import { randomBytes } from 'crypto';
-import { sendPasswordResetEmail } from './email';
+import { sendPasswordResetEmail, sendPasswordResetSuccessEmail } from './email';
 import bcrypt from 'bcryptjs';
 
 const RESET_TOKEN_EXPIRY_MINUTES = 5;
@@ -37,10 +37,17 @@ export async function generatePasswordResetToken(email: string) {
 
   // Send email
   try {
-    await sendPasswordResetEmail(email, token);
+    console.log('📧 Attempting to send password reset email to:', email);
+    const emailResult = await sendPasswordResetEmail(email, token);
+    console.log('📧 Email sending completed:', emailResult);
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
+    console.error('❌ Error sending password reset email:', error);
+    console.error('❌ Error message:', error?.message);
+    console.error('❌ Error code:', error?.code);
+    
     // Remove token if email fails
+    console.log('🧹 Cleaning up token due to email send failure...');
     await prisma.verificationToken.deleteMany({
       where: {
         identifier: email,
@@ -94,6 +101,14 @@ export async function resetPassword(token: string, newPassword: string) {
       token: token,
     },
   });
+
+  // Send password reset success email (non-blocking)
+  try {
+    await sendPasswordResetSuccessEmail(validation.email!);
+  } catch (error) {
+    console.error('Failed to send password reset success email:', error);
+    // Continue even if email fails
+  }
 
   return { success: true };
 }

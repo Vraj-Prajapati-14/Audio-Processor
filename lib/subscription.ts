@@ -1,38 +1,13 @@
 import { prisma } from './prisma';
 import { USAGE_LIMITS } from './stripe';
+import { subscriptionService } from './services/subscription-service';
 
+/**
+ * Get subscription status (wrapper for backward compatibility)
+ * @deprecated Use subscriptionService.getSubscriptionStatus directly
+ */
 export async function getSubscriptionStatus(userId: string) {
-  const subscription = await prisma.subscription.findUnique({
-    where: { userId },
-  });
-
-  if (!subscription) {
-    return {
-      plan: 'free' as const,
-      status: 'inactive' as const,
-      isActive: false,
-      isTrialing: false,
-      trialEndsAt: null,
-      currentPeriodEnd: null,
-    };
-  }
-
-  const now = new Date();
-  const isTrialing = subscription.status === 'trialing' && 
-                     subscription.trialEndsAt && 
-                     subscription.trialEndsAt > now;
-  const isActive = subscription.status === 'active' || isTrialing;
-  // Support both Razorpay and Stripe period ends
-  const periodEnd = subscription.razorpayCurrentPeriodEnd || subscription.stripeCurrentPeriodEnd || subscription.trialEndsAt;
-
-  return {
-    plan: subscription.plan as 'free' | 'pro' | 'premium',
-    status: subscription.status,
-    isActive,
-    isTrialing,
-    trialEndsAt: subscription.trialEndsAt,
-    currentPeriodEnd: periodEnd,
-  };
+  return await subscriptionService.getSubscriptionStatus(userId);
 }
 
 export async function checkUsageLimit(userId: string, action: 'songs') {

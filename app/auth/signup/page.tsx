@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { signIn, getProviders } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { AlertCircle, CheckCircle, X } from 'lucide-react';
-import styles from './auth.module.css';
+import { AlertCircle, CheckCircle, X, Eye, EyeOff } from 'lucide-react';
+import styles from '../signin/auth.module.css';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -13,6 +13,8 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -216,26 +218,37 @@ export default function SignUpPage() {
             <label htmlFor="password">
               Password <span className={styles.required}>*</span>
             </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (fieldErrors.password) {
-                  setFieldErrors({ ...fieldErrors, password: undefined });
-                }
-                if (confirmPassword && fieldErrors.confirmPassword) {
-                  setFieldErrors({ ...fieldErrors, confirmPassword: undefined });
-                }
-              }}
-              required
-              minLength={6}
-              placeholder="At least 6 characters"
-              className={fieldErrors.password ? styles.inputError : ''}
-              aria-invalid={!!fieldErrors.password}
-              aria-describedby={fieldErrors.password ? 'password-error' : undefined}
-            />
+            <div className={styles.passwordWrapper}>
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (fieldErrors.password) {
+                    setFieldErrors({ ...fieldErrors, password: undefined });
+                  }
+                  if (confirmPassword && fieldErrors.confirmPassword) {
+                    setFieldErrors({ ...fieldErrors, confirmPassword: undefined });
+                  }
+                }}
+                required
+                minLength={6}
+                placeholder="At least 6 characters"
+                className={fieldErrors.password ? styles.inputError : ''}
+                aria-invalid={!!fieldErrors.password}
+                aria-describedby={fieldErrors.password ? 'password-error' : undefined}
+              />
+              <button
+                type="button"
+                className={styles.passwordToggle}
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
             {fieldErrors.password && (
               <span id="password-error" className={styles.fieldError}>
                 {fieldErrors.password}
@@ -247,22 +260,33 @@ export default function SignUpPage() {
             <label htmlFor="confirmPassword">
               Confirm Password <span className={styles.required}>*</span>
             </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value);
-                if (fieldErrors.confirmPassword) {
-                  setFieldErrors({ ...fieldErrors, confirmPassword: undefined });
-                }
-              }}
-              required
-              placeholder="Re-enter your password"
-              className={fieldErrors.confirmPassword ? styles.inputError : ''}
-              aria-invalid={!!fieldErrors.confirmPassword}
-              aria-describedby={fieldErrors.confirmPassword ? 'confirmPassword-error' : undefined}
-            />
+            <div className={styles.passwordWrapper}>
+              <input
+                id="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (fieldErrors.confirmPassword) {
+                    setFieldErrors({ ...fieldErrors, confirmPassword: undefined });
+                  }
+                }}
+                required
+                placeholder="Re-enter your password"
+                className={fieldErrors.confirmPassword ? styles.inputError : ''}
+                aria-invalid={!!fieldErrors.confirmPassword}
+                aria-describedby={fieldErrors.confirmPassword ? 'confirmPassword-error' : undefined}
+              />
+              <button
+                type="button"
+                className={styles.passwordToggle}
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                tabIndex={-1}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
             {fieldErrors.confirmPassword && (
               <span id="confirmPassword-error" className={styles.fieldError}>
                 {fieldErrors.confirmPassword}

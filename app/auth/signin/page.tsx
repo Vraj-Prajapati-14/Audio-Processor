@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { signIn, getProviders } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { AlertCircle, CheckCircle, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, X, Eye, EyeOff } from 'lucide-react';
 import styles from './auth.module.css';
 
 export default function SignInPage() {
@@ -12,6 +12,7 @@ export default function SignInPage() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -174,22 +175,33 @@ export default function SignInPage() {
                 Forgot password?
               </Link>
             </div>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (fieldErrors.password) {
-                  setFieldErrors({ ...fieldErrors, password: undefined });
-                }
-              }}
-              required
-              placeholder="••••••••"
-              className={fieldErrors.password ? styles.inputError : ''}
-              aria-invalid={!!fieldErrors.password}
-              aria-describedby={fieldErrors.password ? 'password-error' : undefined}
-            />
+            <div className={styles.passwordWrapper}>
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (fieldErrors.password) {
+                    setFieldErrors({ ...fieldErrors, password: undefined });
+                  }
+                }}
+                required
+                placeholder="••••••••"
+                className={fieldErrors.password ? styles.inputError : ''}
+                aria-invalid={!!fieldErrors.password}
+                aria-describedby={fieldErrors.password ? 'password-error' : undefined}
+              />
+              <button
+                type="button"
+                className={styles.passwordToggle}
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
             {fieldErrors.password && (
               <span id="password-error" className={styles.fieldError}>
                 {fieldErrors.password}

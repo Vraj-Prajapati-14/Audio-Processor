@@ -5,18 +5,24 @@ import { Metadata } from 'next';
 import { Music, Zap, Shield, Gift, Smartphone, Sliders } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'AudioFX Pro - Free Online Audio Effects Processor | Lofi, Reverb, Delay & More',
-  description: 'Transform your audio files with professional effects. Add lofi, reverb, delay, distortion, and more. Fast, free, and completely private - all processing happens in your browser.',
+  title: 'AudioFX Pro - Free Online Audio Effects Processor | 20+ Lo-Fi Presets, Reverb, Delay & More',
+  description: 'Transform your audio files with 20+ professional Lo-Fi presets and effects. Add lofi, reverb, delay, distortion, and more. Fast, free, and completely private - all processing happens in your browser.',
+  keywords: 'audio processor, audio effects, lofi presets, lo-fi audio presets, reverb effect, delay effect, audio editor, online audio effects, audio processing, free audio effects, coffee shop lofi, rainy day audio, study music presets',
   alternates: {
     canonical: 'https://www.audiofxpro.com',
   },
   openGraph: {
-    title: 'AudioFX Pro - Free Online Audio Effects Processor',
-    description: 'Transform your audio files with professional effects. Lofi, reverb, delay, and more.',
+    title: 'AudioFX Pro - Free Online Audio Effects Processor | 20+ Lo-Fi Presets',
+    description: 'Transform your audio files with 20+ professional Lo-Fi presets and effects. Lofi, reverb, delay, and more.',
     url: 'https://www.audiofxpro.com',
     siteName: 'AudioFX Pro',
     locale: 'en_US',
     type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'AudioFX Pro - Free Online Audio Effects Processor',
+    description: 'Transform your audio with 20+ Lo-Fi presets and professional effects.',
   },
 };
 
@@ -35,6 +41,7 @@ export default function Home() {
       priceCurrency: 'USD',
     },
     featureList: [
+      '20+ Lo-Fi Audio Presets',
       'Lofi Audio Effect',
       'Reverb Effect',
       'Delay/Echo Effect',

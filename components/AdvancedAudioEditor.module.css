@@ -364,11 +364,63 @@
     gap: 24px;
 }
 
+.lofiMainTitle {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 16px 0;
+    line-height: 1.2;
+}
+
+.lofiSubtitle {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 32px 0 12px 0;
+    line-height: 1.3;
+}
+
+.lofiSectionTitle {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 32px 0 12px 0;
+    line-height: 1.4;
+}
+
 .lofiDescription {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    line-height: 1.7;
+    margin: 0 0 8px 0;
+}
+
+.lofiSubDescription {
     color: var(--text-secondary);
     font-size: 0.95rem;
     line-height: 1.6;
-    margin: 0;
+    margin: 0 0 24px 0;
+}
+
+.lofiSectionDescription {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0 0 16px 0;
+}
+
+@media (max-width: 768px) {
+    .lofiMainTitle {
+        font-size: 1.75rem;
+    }
+    
+    .lofiSubtitle {
+        font-size: 1.25rem;
+    }
+    
+    .lofiSectionTitle {
+        font-size: 1.125rem;
+    }
 }
 
 .lofiPresetsGrid {

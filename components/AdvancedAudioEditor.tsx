@@ -18,6 +18,9 @@ import LofiGeneratorTab from './generator/LofiGeneratorTab';
 import TrimTab from './editing/TrimTab';
 import AdvancedMashupTab from './editing/AdvancedMashupTab';
 import Loader from './Loader';
+import PresetGrid from './presets/PresetGrid';
+import AudioEffectsTab from './effects/AudioEffectsTab';
+import { generatePresetSchema, generatePresetFAQSchema } from '@/lib/seo';
 import styles from './AdvancedAudioEditor.module.css';
 import clsx from 'clsx';
 
@@ -512,63 +515,70 @@ export default function AdvancedAudioEditor() {
           <>
             {activeTab === 'lofi' && (
               <div className={styles.lofiSection}>
-                <h3>Lo-Fi Presets</h3>
+                <script
+                  type="application/ld+json"
+                  dangerouslySetInnerHTML={{ __html: JSON.stringify(generatePresetSchema()) }}
+                />
+                <script
+                  type="application/ld+json"
+                  dangerouslySetInnerHTML={{ __html: JSON.stringify(generatePresetFAQSchema()) }}
+                />
+                <h1 className={styles.lofiMainTitle}>Lo-Fi Audio Presets - Transform Your Sound</h1>
                 <p className={styles.lofiDescription}>
-                  Click any preset to instantly apply that Lo-Fi vibe to your audio. Perfect for creating chill, nostalgic, or dreamy sounds.
+                  Discover 20+ professional Lo-Fi audio presets designed to instantly transform your audio. Perfect for creating chill, nostalgic, or dreamy sounds. Click any preset to apply that Lo-Fi vibe instantly.
                 </p>
-                <div className={styles.lofiPresetsGrid}>
-                  {allLoFiPresets.map((preset) => (
-                    <button
-                      key={preset.id}
-                      className={styles.lofiPresetCard}
-                      onClick={async () => {
-                        if (!audioBuffer) {
-                          alert('Please upload an audio file first');
-                          return;
-                        }
-                        setIsProcessing(true);
-                        setProcessingMessage(`Applying ${preset.name} preset...`);
-                        try {
-                          // Merge preset effects with defaultEffects to ensure all properties exist
-                          const mergedEffects: AudioEffects = {
-                            lofi: { ...defaultEffects.lofi, ...preset.effects.lofi },
-                            reverb: { ...defaultEffects.reverb, ...preset.effects.reverb },
-                            delay: { ...defaultEffects.delay, ...preset.effects.delay },
-                            distortion: { ...defaultEffects.distortion, ...preset.effects.distortion },
-                            pitch: { ...defaultEffects.pitch, ...preset.effects.pitch },
-                            lowpass: { ...defaultEffects.lowpass, ...preset.effects.lowpass },
-                            highpass: { ...defaultEffects.highpass, ...preset.effects.highpass },
-                            volume: { ...defaultEffects.volume, ...preset.effects.volume },
-                            compressor: defaultEffects.compressor, // Use defaults for new effects
-                            limiter: defaultEffects.limiter,
-                            tapeSaturation: defaultEffects.tapeSaturation,
-                            bitCrusher: defaultEffects.bitCrusher,
-                            sidechain: defaultEffects.sidechain,
-                          };
-                          setEffects(mergedEffects);
-                          const processed = await processAudio(audioBuffer, mergedEffects);
-                          const wavBlob = audioBufferToWav(processed);
-                          const url = URL.createObjectURL(wavBlob);
-                          setProcessedAudioUrl(url);
-                          const newBuffer = await loadAudioFile(new File([wavBlob], 'processed.wav', { type: 'audio/wav' }));
-                          setAudioBuffer(newBuffer);
-                          setCurrentTime(0);
-                          setTimeout(() => drawWaveform(0), 100);
-                        } catch (error) {
-                          console.error('Error applying preset:', error);
-                          alert('Error applying preset');
-                        } finally {
-                          setIsProcessing(false);
-                        }
-                      }}
-                      disabled={isProcessing}
-                    >
-                      <div className={styles.lofiPresetEmoji}>{preset.emoji}</div>
-                      <div className={styles.lofiPresetName}>{preset.name}</div>
-                      <div className={styles.lofiPresetDescription}>{preset.description}</div>
-                    </button>
-                  ))}
-                </div>
+                <h2 className={styles.lofiSubtitle}>Choose Your Vibe</h2>
+                <p className={styles.lofiSubDescription}>
+                  Each preset is carefully crafted with unique effect combinations. Use the search bar to find presets by mood, use case, or tags. Click the info button on any preset to learn more about it.
+                </p>
+                <PresetGrid
+                  presets={allLoFiPresets}
+                  onApplyPreset={async (preset: LoFiPreset) => {
+                    if (!audioBuffer) {
+                      alert('Please upload an audio file first');
+                      return;
+                    }
+                    setIsProcessing(true);
+                    setProcessingMessage(`Applying ${preset.name} preset...`);
+                    try {
+                      // Merge preset effects with defaultEffects to ensure all properties exist
+                      const mergedEffects: AudioEffects = {
+                        lofi: { ...defaultEffects.lofi, ...preset.effects.lofi },
+                        reverb: { ...defaultEffects.reverb, ...preset.effects.reverb },
+                        delay: { ...defaultEffects.delay, ...preset.effects.delay },
+                        distortion: { ...defaultEffects.distortion, ...preset.effects.distortion },
+                        pitch: { ...defaultEffects.pitch, ...preset.effects.pitch },
+                        lowpass: { ...defaultEffects.lowpass, ...preset.effects.lowpass },
+                        highpass: { ...defaultEffects.highpass, ...preset.effects.highpass },
+                        volume: { ...defaultEffects.volume, ...preset.effects.volume },
+                        compressor: defaultEffects.compressor,
+                        limiter: defaultEffects.limiter,
+                        tapeSaturation: defaultEffects.tapeSaturation,
+                        bitCrusher: defaultEffects.bitCrusher,
+                        sidechain: defaultEffects.sidechain,
+                      };
+                      setEffects(mergedEffects);
+                      const processed = await processAudio(audioBuffer, mergedEffects);
+                      const wavBlob = audioBufferToWav(processed);
+                      const url = URL.createObjectURL(wavBlob);
+                      setProcessedAudioUrl(url);
+                      const newBuffer = await loadAudioFile(new File([wavBlob], 'processed.wav', { type: 'audio/wav' }));
+                      setAudioBuffer(newBuffer);
+                      setCurrentTime(0);
+                      setTimeout(() => drawWaveform(0), 100);
+                    } catch (error) {
+                      console.error('Error applying preset:', error);
+                      alert('Error applying preset');
+                    } finally {
+                      setIsProcessing(false);
+                    }
+                  }}
+                  isProcessing={isProcessing}
+                />
+                <h3 className={styles.lofiSectionTitle}>Popular Presets</h3>
+                <p className={styles.lofiSectionDescription}>
+                  These are some of our most popular Lo-Fi presets, perfect for studying, relaxing, or creating nostalgic vibes.
+                </p>
               </div>
             )}
 
@@ -843,6 +853,17 @@ export default function AdvancedAudioEditor() {
             )}
 
             {activeTab === 'effects' && (
+              <AudioEffectsTab
+                effects={effects}
+                updateEffect={updateEffect}
+                resetEffects={resetEffects}
+                isProcessing={isProcessing}
+                onProcess={handleProcess}
+              />
+            )}
+
+            {/* OLD EFFECTS CODE - REMOVED - Using AudioEffectsTab component instead */}
+            {false && activeTab === 'effects' && (
               <div className={styles.effectsSection}>
                 <div className={styles.effectsHeader}>
                   <h3>Audio Effects</h3>

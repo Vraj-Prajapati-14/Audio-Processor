@@ -16,6 +16,17 @@ export interface LoFiGeneratorSettings {
   key: string; // Musical key (C, C#, D, etc.)
   scale: 'major' | 'minor'; // Scale type
   style: 'ambient' | 'chill' | 'jazz' | 'study'; // Style preset
+  // Advanced controls
+  swing?: number; // Swing amount (0-0.2)
+  drumIntensity?: number; // Drum volume/intensity (0-1)
+  melodyComplexity?: number; // Melody complexity (0-1)
+  chordVoicing?: 'simple' | 'jazz' | 'extended'; // Chord voicing style
+  reverbAmount?: number; // Reverb wet level (0-1)
+  delayAmount?: number; // Delay wet level (0-1)
+  lofiAmount?: number; // Lo-Fi processing intensity (0-1)
+  bassLevel?: number; // Bass frequency boost (0-1)
+  trebleLevel?: number; // Treble frequency boost (0-1)
+  overallVolume?: number; // Master volume (0-1)
 }
 
 export type VariationLevel = 'low' | 'medium' | 'high' | 'extreme';
@@ -28,7 +39,8 @@ export function generateDrumPattern(
   bars: number,
   swing: number = 0.05,
   variationLevel: VariationLevel = 'medium',
-  segmentIndex: number = 0
+  segmentIndex: number = 0,
+  drumIntensity: number = 0.7
 ): Array<{ time: number; type: 'kick' | 'snare' | 'hihat'; velocity: number }> {
   const beatsPerBar = 4;
   const beatDuration = 60 / bpm;
@@ -169,7 +181,8 @@ export function generateChordProgression(
   bars: number,
   bpm: number,
   variationLevel: VariationLevel = 'medium',
-  segmentIndex: number = 0
+  segmentIndex: number = 0,
+  chordVoicing: 'simple' | 'jazz' | 'extended' = 'jazz'
 ): Array<{ time: number; frequencies: number[]; duration: number }> {
   // Extended chord progressions for variation
   const majorProgressions = [
@@ -220,8 +233,22 @@ export function generateChordProgression(
     // Vary octave based on segment for more variation
     const octave = 3 + Math.floor((globalBar / 16) % 2);
     
-    // Convert chord symbol to actual MIDI notes
-    const midiNotes = chordSymbolToNotes(chordSymbol, key, scale, octave);
+    // Convert chord symbol to actual MIDI notes based on voicing
+    let midiNotes = chordSymbolToNotes(chordSymbol, key, scale, octave);
+    
+    // Apply chord voicing
+    if (chordVoicing === 'jazz') {
+      // Add 7th to chords
+      const seventh = midiNotes[0] + (scale === 'major' ? 11 : 10);
+      midiNotes = [...midiNotes, seventh];
+    } else if (chordVoicing === 'extended') {
+      // Add 7th and 9th
+      const seventh = midiNotes[0] + (scale === 'major' ? 11 : 10);
+      const ninth = midiNotes[0] + 14;
+      midiNotes = [...midiNotes, seventh, ninth];
+    }
+    // 'simple' uses just the triad (default)
+    
     const frequencies = midiNotes.map(note => midiToFrequency(note));
 
     chordChanges.push({
@@ -243,7 +270,8 @@ export function generateMelody(
   duration: number,
   bpm: number,
   variationLevel: VariationLevel = 'medium',
-  segmentIndex: number = 0
+  segmentIndex: number = 0,
+  melodyComplexity: number = 0.6
 ): Array<{ time: number; note: number; duration: number; velocity: number }> {
   // Scale degrees (semitones from root)
   const majorScale = [0, 2, 4, 5, 7, 9, 11];
@@ -277,13 +305,19 @@ export function generateMelody(
     const degreeIndex = (phraseIndex + segmentIndex) % scaleDegrees.length;
     let degree = scaleDegrees[degreeIndex];
     
-    // Add some randomness but keep it melodic (prefer step-wise motion)
-    if (Math.random() > 0.3) {
+    // Add complexity-based randomness but keep it melodic (prefer step-wise motion)
+    const complexityThreshold = 0.3 + (1 - melodyComplexity) * 0.4; // Higher complexity = more variation
+    if (Math.random() > complexityThreshold) {
       const step = Math.random() > 0.5 ? 1 : -1;
       const newIndex = (scaleDegrees.indexOf(lastNote) + step + scaleDegrees.length) % scaleDegrees.length;
       degree = scaleDegrees[newIndex];
     } else {
-      degree = scaleDegrees[Math.floor(Math.random() * scaleDegrees.length)];
+      // Higher complexity allows more jumps
+      const maxJump = Math.floor(melodyComplexity * 3) + 1;
+      const jump = Math.floor(Math.random() * maxJump);
+      const direction = Math.random() > 0.5 ? 1 : -1;
+      const newIndex = (scaleDegrees.indexOf(lastNote) + jump * direction + scaleDegrees.length) % scaleDegrees.length;
+      degree = scaleDegrees[newIndex];
     }
     
     lastNote = degree;
@@ -369,10 +403,14 @@ export async function generateLofiTuneAudio(
     const segmentBpm = settings.bpm + (Math.sin(segment * 0.5) * 3);
     const segmentBeatDuration = 60 / segmentBpm;
 
-    // Generate patterns for this segment
-    const drums = generateDrumPattern(segmentBpm, segmentBars, 0.05, variationLevel, segment);
-    const chords = generateChordProgression(settings.key, settings.scale, segmentBars, segmentBpm, variationLevel, segment);
-    const melody = generateMelody(settings.key, settings.scale, segmentDurationActual, segmentBpm, variationLevel, segment);
+    // Generate patterns for this segment with advanced settings
+    const swing = settings.swing ?? 0.05;
+    const drumIntensity = settings.drumIntensity ?? 0.7;
+    const melodyComplexity = settings.melodyComplexity ?? 0.6;
+    
+    const drums = generateDrumPattern(segmentBpm, segmentBars, swing, variationLevel, segment, drumIntensity);
+    const chords = generateChordProgression(settings.key, settings.scale, segmentBars, segmentBpm, variationLevel, segment, settings.chordVoicing);
+    const melody = generateMelody(settings.key, settings.scale, segmentDurationActual, segmentBpm, variationLevel, segment, melodyComplexity);
 
     // Offset times by segment start
     allDrums.push(...drums.map(d => ({ ...d, time: d.time + segmentStartTime })));
@@ -415,7 +453,8 @@ export async function generateLofiTuneAudio(
     }
 
     const startSample = Math.floor(hit.time * sampleRate);
-    const volume = hit.velocity * 0.3; // Reduce drum volume
+    const drumIntensity = settings.drumIntensity ?? 0.7;
+    const volume = hit.velocity * 0.3 * drumIntensity; // Apply drum intensity
 
     for (let i = 0; i < sound.length && startSample + i < totalSamples; i++) {
       const sample = sound[i] * volume;
@@ -472,11 +511,52 @@ export async function generateLofiTuneAudio(
     }
   }
 
-  // Apply Lo-Fi processing
+  // Apply Lo-Fi processing with advanced settings
   onProgress?.(90);
+  const reverbAmount = settings.reverbAmount ?? 0.3;
+  const delayAmount = settings.delayAmount ?? 0.15;
+  const lofiAmount = settings.lofiAmount ?? 0.8;
+  const bassLevel = settings.bassLevel ?? 0.5;
+  const trebleLevel = settings.trebleLevel ?? 0.4;
+  const overallVolume = settings.overallVolume ?? 0.9;
+
   const lofiEffects = {
     ...defaultEffects,
-    ...coffeeShopPreset.effects,
+    lofi: {
+      ...defaultEffects.lofi,
+      enabled: true,
+      bitDepth: Math.round(8 + (1 - lofiAmount) * 4), // 8-12 based on lofi amount
+      sampleRate: Math.round(11025 + (1 - lofiAmount) * 5000), // 11025-16025 based on lofi amount
+      lowpassFreq: Math.round(3500 + (1 - lofiAmount) * 3000), // 3500-6500 based on lofi amount
+    },
+    reverb: {
+      ...defaultEffects.reverb,
+      enabled: reverbAmount > 0,
+      wet: reverbAmount,
+      roomSize: 0.4 + reverbAmount * 0.3,
+    },
+    delay: {
+      ...defaultEffects.delay,
+      enabled: delayAmount > 0,
+      wet: delayAmount,
+      delayTime: 0.2,
+      feedback: delayAmount * 0.5,
+    },
+    lowpass: {
+      ...defaultEffects.lowpass,
+      enabled: true,
+      frequency: Math.round(5000 + trebleLevel * 5000), // 5000-10000 based on treble
+    },
+    highpass: {
+      ...defaultEffects.highpass,
+      enabled: bassLevel < 0.5,
+      frequency: Math.round(80 + (0.5 - bassLevel) * 100), // More bass = lower highpass
+    },
+    volume: {
+      ...defaultEffects.volume,
+      enabled: true,
+      gain: overallVolume,
+    },
   };
 
   const processed = await processAudio(masterBuffer, lofiEffects);

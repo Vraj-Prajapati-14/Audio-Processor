@@ -8,22 +8,32 @@ export interface AudioEffects {
     bitDepth: number; // 1-32
     sampleRate: number; // 4000-48000
     lowpassFreq: number; // 200-20000 Hz
+    wowFlutter?: number; // 0-1 (pitch variation)
+    noiseAmount?: number; // 0-1 (tape noise)
   };
   reverb: {
     enabled: boolean;
     roomSize: number; // 0-1
     dampening: number; // 0-1
     wet: number; // 0-1
+    preDelay?: number; // 0-200 ms
+    earlyReflections?: number; // 0-1
+    lateReflections?: number; // 0-1
   };
   delay: {
     enabled: boolean;
     delayTime: number; // 0-2 seconds
     feedback: number; // 0-1
     wet: number; // 0-1
+    pingPong?: boolean; // Stereo ping-pong delay
+    stereoWidth?: number; // 0-1
+    modulation?: number; // 0-1 (chorus-like modulation)
   };
   distortion: {
     enabled: boolean;
     amount: number; // 0-1
+    type?: 'soft' | 'hard' | 'tube'; // Distortion type
+    tone?: number; // 0-1 (tone control)
   };
   pitch: {
     enabled: boolean;
@@ -48,6 +58,8 @@ export interface AudioEffects {
     attack: number; // 0 to 1 seconds
     release: number; // 0 to 1 seconds
     knee: number; // 0 to 40 dB
+    makeUpGain?: number; // 0-12 dB (output gain compensation)
+    lookahead?: number; // 0-10 ms
   };
   limiter: {
     enabled: boolean;
@@ -59,6 +71,8 @@ export interface AudioEffects {
     drive: number; // 0-1 (how much saturation)
     bias: number; // 0-1 (DC bias offset)
     amount: number; // 0-1 (wet/dry mix)
+    wowFlutter?: number; // 0-1 (pitch variation)
+    noise?: number; // 0-1 (tape noise)
   };
   bitCrusher: {
     enabled: boolean;
@@ -73,6 +87,99 @@ export interface AudioEffects {
     release: number; // 0 to 1 seconds
     depth: number; // 0-1 (how much sidechain ducking)
   };
+  // New professional effects
+  chorus: {
+    enabled: boolean;
+    rate: number; // 0-10 Hz
+    depth: number; // 0-1
+    feedback: number; // 0-1
+    delay: number; // 0-50 ms
+  };
+  flanger: {
+    enabled: boolean;
+    rate: number; // 0-10 Hz
+    depth: number; // 0-1
+    feedback: number; // -1 to 1
+    delay: number; // 0-20 ms
+  };
+  phaser: {
+    enabled: boolean;
+    rate: number; // 0-10 Hz
+    depth: number; // 0-1
+    feedback: number; // -1 to 1
+    stages: number; // 2-12
+  };
+  tremolo: {
+    enabled: boolean;
+    rate: number; // 0-20 Hz
+    depth: number; // 0-1
+    waveform: 'sine' | 'square' | 'triangle';
+  };
+  vibrato: {
+    enabled: boolean;
+    rate: number; // 0-20 Hz
+    depth: number; // 0-1
+  };
+  wahWah: {
+    enabled: boolean;
+    frequency: number; // 200-2000 Hz
+    resonance: number; // 0-1
+    autoWah?: boolean; // Auto-wah mode
+  };
+  multiBandEQ: {
+    enabled: boolean;
+    lowGain: number; // -12 to 12 dB
+    lowFreq: number; // 20-500 Hz
+    midGain: number; // -12 to 12 dB
+    midFreq: number; // 200-5000 Hz
+    midQ: number; // 0.1-10
+    highGain: number; // -12 to 12 dB
+    highFreq: number; // 2000-20000 Hz
+  };
+  noiseGate: {
+    enabled: boolean;
+    threshold: number; // -60 to 0 dB
+    attack: number; // 0-100 ms
+    release: number; // 0-1000 ms
+    hold: number; // 0-1000 ms
+  };
+  exciter: {
+    enabled: boolean;
+    amount: number; // 0-1
+    frequency: number; // 2000-20000 Hz
+    harmonics: number; // 0-1
+  };
+  stereoWidener: {
+    enabled: boolean;
+    width: number; // 0-2 (0=mono, 1=normal, 2=wide)
+    balance: number; // -1 to 1 (left to right)
+  };
+  pan: {
+    enabled: boolean;
+    position: number; // -1 to 1 (left to right)
+  };
+  autoPan: {
+    enabled: boolean;
+    rate: number; // 0-10 Hz
+    depth: number; // 0-1
+    waveform: 'sine' | 'square' | 'triangle';
+  };
+  ringModulator: {
+    enabled: boolean;
+    frequency: number; // 20-2000 Hz
+    depth: number; // 0-1
+  };
+  granular: {
+    enabled: boolean;
+    grainSize: number; // 10-500 ms
+    pitch: number; // 0.25-4x
+    position: number; // 0-1 (grain position)
+  };
+  bandpass: {
+    enabled: boolean;
+    frequency: number; // 20-20000 Hz
+    Q: number; // 0.1-30
+  };
 }
 
 export const defaultEffects: AudioEffects = {
@@ -81,22 +188,32 @@ export const defaultEffects: AudioEffects = {
     bitDepth: 8,
     sampleRate: 11025,
     lowpassFreq: 3500,
+    wowFlutter: 0.1,
+    noiseAmount: 0.05,
   },
   reverb: {
     enabled: false,
     roomSize: 0.5,
     dampening: 0.5,
     wet: 0.3,
+    preDelay: 20,
+    earlyReflections: 0.3,
+    lateReflections: 0.7,
   },
   delay: {
     enabled: false,
     delayTime: 0.3,
     feedback: 0.3,
     wet: 0.3,
+    pingPong: false,
+    stereoWidth: 1,
+    modulation: 0,
   },
   distortion: {
     enabled: false,
     amount: 0.5,
+    type: 'soft',
+    tone: 0.5,
   },
   pitch: {
     enabled: false,
@@ -121,6 +238,8 @@ export const defaultEffects: AudioEffects = {
     attack: 0.003,
     release: 0.25,
     knee: 30,
+    makeUpGain: 0,
+    lookahead: 0,
   },
   limiter: {
     enabled: false,
@@ -132,6 +251,8 @@ export const defaultEffects: AudioEffects = {
     drive: 0.5,
     bias: 0.1,
     amount: 0.7,
+    wowFlutter: 0.05,
+    noise: 0.02,
   },
   bitCrusher: {
     enabled: false,
@@ -145,6 +266,98 @@ export const defaultEffects: AudioEffects = {
     attack: 0.003,
     release: 0.25,
     depth: 0.6,
+  },
+  chorus: {
+    enabled: false,
+    rate: 1.5,
+    depth: 0.5,
+    feedback: 0.3,
+    delay: 20,
+  },
+  flanger: {
+    enabled: false,
+    rate: 0.5,
+    depth: 0.7,
+    feedback: 0.3,
+    delay: 10,
+  },
+  phaser: {
+    enabled: false,
+    rate: 0.5,
+    depth: 0.8,
+    feedback: 0.4,
+    stages: 4,
+  },
+  tremolo: {
+    enabled: false,
+    rate: 5,
+    depth: 0.5,
+    waveform: 'sine',
+  },
+  vibrato: {
+    enabled: false,
+    rate: 5,
+    depth: 0.2,
+  },
+  wahWah: {
+    enabled: false,
+    frequency: 800,
+    resonance: 0.7,
+    autoWah: false,
+  },
+  multiBandEQ: {
+    enabled: false,
+    lowGain: 0,
+    lowFreq: 100,
+    midGain: 0,
+    midFreq: 1000,
+    midQ: 1,
+    highGain: 0,
+    highFreq: 5000,
+  },
+  noiseGate: {
+    enabled: false,
+    threshold: -40,
+    attack: 5,
+    release: 50,
+    hold: 10,
+  },
+  exciter: {
+    enabled: false,
+    amount: 0.3,
+    frequency: 5000,
+    harmonics: 0.5,
+  },
+  stereoWidener: {
+    enabled: false,
+    width: 1,
+    balance: 0,
+  },
+  pan: {
+    enabled: false,
+    position: 0,
+  },
+  autoPan: {
+    enabled: false,
+    rate: 2,
+    depth: 0.5,
+    waveform: 'sine',
+  },
+  ringModulator: {
+    enabled: false,
+    frequency: 440,
+    depth: 0.5,
+  },
+  granular: {
+    enabled: false,
+    grainSize: 50,
+    pitch: 1,
+    position: 0.5,
+  },
+  bandpass: {
+    enabled: false,
+    frequency: 1000,
+    Q: 1,
   },
 };
 
@@ -349,6 +562,191 @@ export async function processAudio(
   // Render audio
   source.start(0);
   let rendered = await offlineContext.startRendering();
+
+  // Apply effects that need to process the full buffer (post-rendering)
+  const { 
+    applyChorus, applyFlanger, applyPhaser, applyTremolo, applyVibrato,
+    applyNoiseGate, applyStereoWidener, applyPan, applyAutoPan,
+    applyRingModulator, applyExciter
+  } = await import('./audio-effects-extended');
+
+  // Noise Gate (early in chain)
+  if (effects.noiseGate.enabled) {
+    rendered = applyNoiseGate(
+      rendered,
+      effects.noiseGate.threshold,
+      effects.noiseGate.attack,
+      effects.noiseGate.release,
+      effects.noiseGate.hold
+    );
+  }
+
+  // Multi-band EQ
+  if (effects.multiBandEQ.enabled) {
+    const eqContext = new OfflineAudioContext(
+      rendered.numberOfChannels,
+      rendered.length,
+      rendered.sampleRate
+    );
+    const eqSource = eqContext.createBufferSource();
+    eqSource.buffer = rendered;
+    
+    // Apply low shelf
+    const lowFilter = eqContext.createBiquadFilter();
+    lowFilter.type = 'lowshelf';
+    lowFilter.frequency.value = effects.multiBandEQ.lowFreq;
+    lowFilter.gain.value = effects.multiBandEQ.lowGain;
+    
+    // Apply mid bell
+    const midFilter = eqContext.createBiquadFilter();
+    midFilter.type = 'peaking';
+    midFilter.frequency.value = effects.multiBandEQ.midFreq;
+    midFilter.Q.value = effects.multiBandEQ.midQ;
+    midFilter.gain.value = effects.multiBandEQ.midGain;
+    
+    // Apply high shelf
+    const highFilter = eqContext.createBiquadFilter();
+    highFilter.type = 'highshelf';
+    highFilter.frequency.value = effects.multiBandEQ.highFreq;
+    highFilter.gain.value = effects.multiBandEQ.highGain;
+    
+    // Connect filters in series
+    eqSource.connect(lowFilter);
+    lowFilter.connect(midFilter);
+    midFilter.connect(highFilter);
+    highFilter.connect(eqContext.destination);
+    eqSource.start(0);
+    rendered = await eqContext.startRendering();
+  }
+
+  // Bandpass Filter
+  if (effects.bandpass.enabled) {
+    const bpContext = new OfflineAudioContext(
+      rendered.numberOfChannels,
+      rendered.length,
+      rendered.sampleRate
+    );
+    const bpSource = bpContext.createBufferSource();
+    bpSource.buffer = rendered;
+    const bandpassFilter = bpContext.createBiquadFilter();
+    bandpassFilter.type = 'bandpass';
+    bandpassFilter.frequency.value = effects.bandpass.frequency;
+    bandpassFilter.Q.value = effects.bandpass.Q;
+    bpSource.connect(bandpassFilter);
+    bandpassFilter.connect(bpContext.destination);
+    bpSource.start(0);
+    rendered = await bpContext.startRendering();
+  }
+
+  // Wah-Wah
+  if (effects.wahWah.enabled) {
+    const wahContext = new OfflineAudioContext(
+      rendered.numberOfChannels,
+      rendered.length,
+      rendered.sampleRate
+    );
+    const wahSource = wahContext.createBufferSource();
+    wahSource.buffer = rendered;
+    const wahFilter = wahContext.createBiquadFilter();
+    wahFilter.type = 'bandpass';
+    wahFilter.frequency.value = effects.wahWah.frequency;
+    wahFilter.Q.value = effects.wahWah.resonance * 10;
+    wahSource.connect(wahFilter);
+    wahFilter.connect(wahContext.destination);
+    wahSource.start(0);
+    rendered = await wahContext.startRendering();
+  }
+
+  // Modulation effects (Chorus, Flanger, Phaser)
+  if (effects.chorus.enabled) {
+    rendered = applyChorus(
+      rendered,
+      effects.chorus.rate,
+      effects.chorus.depth,
+      effects.chorus.feedback,
+      effects.chorus.delay
+    );
+  }
+
+  if (effects.flanger.enabled) {
+    rendered = applyFlanger(
+      rendered,
+      effects.flanger.rate,
+      effects.flanger.depth,
+      effects.flanger.feedback,
+      effects.flanger.delay
+    );
+  }
+
+  if (effects.phaser.enabled) {
+    rendered = applyPhaser(
+      rendered,
+      effects.phaser.rate,
+      effects.phaser.depth,
+      effects.phaser.feedback,
+      effects.phaser.stages
+    );
+  }
+
+  // Tremolo
+  if (effects.tremolo.enabled) {
+    rendered = applyTremolo(
+      rendered,
+      effects.tremolo.rate,
+      effects.tremolo.depth,
+      effects.tremolo.waveform
+    );
+  }
+
+  // Vibrato
+  if (effects.vibrato.enabled) {
+    rendered = applyVibrato(
+      rendered,
+      effects.vibrato.rate,
+      effects.vibrato.depth
+    );
+  }
+
+  // Ring Modulator
+  if (effects.ringModulator.enabled) {
+    rendered = applyRingModulator(
+      rendered,
+      effects.ringModulator.frequency,
+      effects.ringModulator.depth
+    );
+  }
+
+  // Spatial effects (Pan, Auto-Pan, Stereo Widener)
+  if (effects.pan.enabled) {
+    rendered = applyPan(rendered, effects.pan.position);
+  }
+
+  if (effects.autoPan.enabled) {
+    rendered = applyAutoPan(
+      rendered,
+      effects.autoPan.rate,
+      effects.autoPan.depth,
+      effects.autoPan.waveform
+    );
+  }
+
+  if (effects.stereoWidener.enabled) {
+    rendered = applyStereoWidener(
+      rendered,
+      effects.stereoWidener.width,
+      effects.stereoWidener.balance
+    );
+  }
+
+  // Exciter
+  if (effects.exciter.enabled) {
+    rendered = applyExciter(
+      rendered,
+      effects.exciter.amount,
+      effects.exciter.frequency,
+      effects.exciter.harmonics
+    );
+  }
 
   // Apply sidechain compression after all other effects
   if (effects.sidechain.enabled) {

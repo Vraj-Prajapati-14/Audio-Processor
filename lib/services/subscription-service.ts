@@ -274,7 +274,7 @@ export class SubscriptionService {
       // Update database
       await this.updateSubscriptionStatus(
         subscription.id,
-        cancelAtPeriodEnd ? subscription.status : SUBSCRIPTION_STATUS.CANCELED,
+        cancelAtPeriodEnd ? (subscription.status as SubscriptionStatus) : SUBSCRIPTION_STATUS.CANCELED,
         {
           canceledAt: new Date(),
           cancelAtPeriodEnd: cancelAtPeriodEnd,
@@ -358,7 +358,7 @@ export class SubscriptionService {
     const startTime = Date.now();
     const requestPayload = {
       plan_id: planId,
-      customer_notify: 1,
+      customer_notify: 1 as 0 | 1,
       total_count: 9999, // For recurring subscriptions
       start_at: Math.floor((Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000) / 1000), // Start after trial
       notes: {
@@ -373,6 +373,12 @@ export class SubscriptionService {
         throw new Error(getErrorMessage(ERROR_CODES.PAYMENT_GATEWAY_NOT_CONFIGURED));
       }
 
+      // Type guard: ensure plan is 'pro' or 'premium' (not 'free')
+      if (plan !== 'pro' && plan !== 'premium') {
+        throw new Error(getErrorMessage(ERROR_CODES.INVALID_PLAN));
+      }
+
+      // Now TypeScript knows plan is 'pro' | 'premium'
       const planConfig = RAZORPAY_PLANS[plan][billingPeriod];
       if (!planConfig.planId) {
         throw new Error(getErrorMessage(ERROR_CODES.PLAN_NOT_CONFIGURED));

@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { signIn, getProviders } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertCircle, CheckCircle, X, Eye, EyeOff } from 'lucide-react';
 import styles from './auth.module.css';
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
@@ -273,5 +273,20 @@ export default function SignInPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className={styles.container}>
+        <div className={styles.card}>
+          <h1 className={styles.title}>Sign In</h1>
+          <p className={styles.subtitle}>Loading...</p>
+        </div>
+      </div>
+    }>
+      <SignInForm />
+    </Suspense>
   );
 }

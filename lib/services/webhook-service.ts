@@ -244,7 +244,7 @@ export class WebhookService {
     await subscriptionService.updateSubscriptionStatus(
       dbSubscription.id,
       status as any,
-      { currentPeriodEnd }
+      { currentPeriodEnd: currentPeriodEnd || undefined }
     );
 
     // Update webhook with subscription ID
@@ -302,7 +302,7 @@ export class WebhookService {
     await subscriptionService.updateSubscriptionStatus(
       dbSubscription.id,
       status as any,
-      { currentPeriodEnd }
+      { currentPeriodEnd: currentPeriodEnd || undefined }
     );
 
     await this.logWebhookEvent(webhookId, 'info', 'Subscription updated successfully', {
@@ -385,7 +385,7 @@ export class WebhookService {
     await subscriptionService.updateSubscriptionStatus(
       dbSubscription.id,
       'active',
-      { currentPeriodEnd }
+      { currentPeriodEnd: currentPeriodEnd || undefined }
     );
 
     await this.logWebhookEvent(webhookId, 'info', 'Subscription resumed successfully', {

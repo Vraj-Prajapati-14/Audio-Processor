@@ -51,6 +51,9 @@ export class ChargeService {
           failureMessage: data.failureMessage || null,
           metadata: data.metadata ? JSON.stringify(data.metadata) : null,
         },
+        include: {
+          subscription: true,
+        },
       });
 
       return charge;
@@ -94,6 +97,9 @@ export class ChargeService {
       const charge = await prisma.charge.update({
         where: { id: chargeId },
         data: updateData,
+        include: {
+          subscription: true,
+        },
       });
 
       return charge;

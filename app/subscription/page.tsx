@@ -70,7 +70,7 @@ export default function SubscriptionPage() {
       const data = await response.json();
       // Ensure we have a valid subscription object with plan
       if (data && data.plan) {
-        setSubscription(data);
+      setSubscription(data);
       } else {
         // If no plan, treat as no subscription
         setSubscription(null);
@@ -141,8 +141,8 @@ export default function SubscriptionPage() {
           <p className={styles.text}>You don't have an active subscription.</p>
           <div className={styles.ctaSection}>
             <Link href="/pricing" className={styles.upgradeButton}>
-              View Plans
-            </Link>
+            View Plans
+          </Link>
           </div>
         </div>
       </div>

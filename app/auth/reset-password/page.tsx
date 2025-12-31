@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { AlertCircle, CheckCircle, X, Lock, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import styles from '../signin/auth.module.css';
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
@@ -296,6 +296,21 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className={styles.container}>
+        <div className={styles.card}>
+          <h1 className={styles.title}>Loading...</h1>
+          <p style={{ textAlign: 'center', color: 'rgba(255, 255, 255, 0.7)' }}>Validating reset token...</p>
+        </div>
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
 

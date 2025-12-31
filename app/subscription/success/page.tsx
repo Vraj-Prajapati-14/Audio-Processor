@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import styles from '../subscription.module.css';
 
-export default function SubscriptionSuccessPage() {
+function SubscriptionSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
@@ -40,6 +40,20 @@ export default function SubscriptionSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SubscriptionSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className={styles.container}>
+        <div className={styles.card} style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
+          <h1 className={styles.title}>Loading...</h1>
+        </div>
+      </div>
+    }>
+      <SubscriptionSuccessContent />
+    </Suspense>
   );
 }
 

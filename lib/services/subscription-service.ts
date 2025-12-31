@@ -354,7 +354,7 @@ export class SubscriptionService {
     userId: string,
     plan: SubscriptionPlan,
     billingPeriod: BillingPeriod
-  ) {
+  ): Promise<{ id: string; [key: string]: any }> {
     const startTime = Date.now();
     const requestPayload = {
       plan_id: planId,

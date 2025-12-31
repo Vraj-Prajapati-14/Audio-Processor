@@ -44,9 +44,29 @@ export default function SubscriptionPage() {
   const fetchSubscriptionStatus = async () => {
     try {
       const response = await fetch('/api/subscription/status');
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch subscription status');
+        // Handle unauthorized - redirect to login
+        if (response.status === 401) {
+          router.push('/auth/signin');
+          return;
+        }
+        
+        // Try to get error message from response
+        let errorMessage = 'Failed to fetch subscription status';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch {
+          // If JSON parsing fails, use default message
+        }
+        
+        console.error('Failed to fetch subscription status:', errorMessage);
+        // Set subscription to null to show "No Subscription" state
+        setSubscription(null);
+        return;
       }
+      
       const data = await response.json();
       // Ensure we have a valid subscription object with plan
       if (data && data.plan) {
@@ -57,6 +77,7 @@ export default function SubscriptionPage() {
       }
     } catch (error) {
       console.error('Failed to fetch subscription status:', error);
+      // Set subscription to null to show "No Subscription" state
       setSubscription(null);
     } finally {
       setLoading(false);
@@ -118,9 +139,11 @@ export default function SubscriptionPage() {
         <div className={styles.card}>
           <h1 className={styles.title}>No Subscription</h1>
           <p className={styles.text}>You don't have an active subscription.</p>
-          <Link href="/pricing" className={styles.button}>
-            View Plans
-          </Link>
+          <div className={styles.ctaSection}>
+            <Link href="/pricing" className={styles.upgradeButton}>
+              View Plans
+            </Link>
+          </div>
         </div>
       </div>
     );

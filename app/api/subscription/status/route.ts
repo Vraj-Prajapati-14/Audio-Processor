@@ -8,6 +8,7 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
+      console.error('[Subscription Status API] No session or user ID');
       return NextResponse.json(
         { 
           error: getErrorMessage(ERROR_CODES.UNAUTHORIZED),
@@ -17,19 +18,37 @@ export async function GET() {
       );
     }
 
-    const subscription = await subscriptionService.getSubscriptionStatus(session.user.id);
-    return NextResponse.json(subscription);
+    try {
+      const subscription = await subscriptionService.getSubscriptionStatus(session.user.id);
+      return NextResponse.json(subscription);
+    } catch (serviceError) {
+      const errorMessage = serviceError instanceof Error ? serviceError.message : 'Unknown error';
+      console.error('[Subscription Status API] Service error:', errorMessage, serviceError);
+      
+      // Return a default "free" subscription status instead of error
+      // This allows the frontend to show "No Subscription" gracefully
+      return NextResponse.json({
+        plan: 'free',
+        status: 'inactive',
+        isActive: false,
+        isTrialing: false,
+        trialEndsAt: null,
+        currentPeriodEnd: null,
+      });
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Subscription Status API] Error:', errorMessage);
-    return NextResponse.json(
-      { 
-        error: getErrorMessage(ERROR_CODES.INTERNAL_ERROR),
-        code: ERROR_CODES.INTERNAL_ERROR,
-        details: errorMessage,
-      },
-      { status: 500 }
-    );
+    console.error('[Subscription Status API] Unexpected error:', errorMessage, error);
+    
+    // Return a default "free" subscription status instead of error
+    return NextResponse.json({
+      plan: 'free',
+      status: 'inactive',
+      isActive: false,
+      isTrialing: false,
+      trialEndsAt: null,
+      currentPeriodEnd: null,
+    });
   }
 }
 
